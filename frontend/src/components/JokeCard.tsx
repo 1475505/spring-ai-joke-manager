@@ -68,7 +68,7 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
   };
 
   const handleEdit = async (values: any) => {
-    if (!user || !hasPermission('UPDATE', joke.theme.id)) {
+    if (!user || !hasPermission('write', joke.theme.id)) {
       message.error('权限不足');
       return;
     }
@@ -105,8 +105,8 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
   };
 
   const handleScore = async (values: { score: number }) => {
-    if (!user || !hasPermission('ADD', joke.theme.id)) {
-      message.error('权限不足，只有具有add权限的用户可以评分');
+    if (!user || !hasPermission('score', joke.theme.id)) {
+      message.error('权限不足，只有具有write权限的用户可以评分');
       return;
     }
 
@@ -152,7 +152,7 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
   };
 
   const handleStatusUpdate = async (status: string) => {
-    if (!user || !hasPermission('UPDATE', joke.theme.id)) {
+    if (!user || !hasPermission('write', joke.theme.id)) {
       message.error('权限不足');
       return;
     }
@@ -229,7 +229,7 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
           >
             {isMobile ? '' : (commentsVisible ? '收起评论' : '评论')}
           </Button>,
-          ...(user && hasPermission('SCORE', joke.theme.id) ? [
+          ...(user && hasPermission('score', joke.theme.id) ? [
             <Button
               key="score"
               type="text"
@@ -240,7 +240,7 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
               {isMobile ? '' : '评分'}
             </Button>
           ] : []),
-          ...(hasPermission('UPDATE', joke.theme.id) && joke.status !== 'REJECTED' ? [
+          ...(hasPermission('write', joke.theme.id) && joke.status !== 'REJECTED' ? [
             <Button
               key="edit"
               type="text"
@@ -257,7 +257,7 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
               {isMobile ? '' : '编辑'}
             </Button>
           ] : []),
-          ...(hasPermission('UPDATE', joke.theme.id) ? [
+          ...(hasPermission('write', joke.theme.id) ? [
             <Button
               key="status"
               type="text"

@@ -25,7 +25,7 @@ Content-Type: application/json
   "message": "登录成功",
   "data": {
     "user": {
-      "id": "uuid",
+      "id": "123",
       "username": "testuser",
       "role": "USER",
       "avatarUrl": "string"

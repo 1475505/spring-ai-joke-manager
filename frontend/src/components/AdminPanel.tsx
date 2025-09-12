@@ -42,7 +42,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ visible, onClose, currentThemeI
 
   // 加载待审核笑话
   const loadPendingJokes = async () => {
-    if (!hasPermission('UPDATE', currentThemeId)) {
+    if (!hasPermission('write', currentThemeId)) {
       return;
     }
 
@@ -59,7 +59,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ visible, onClose, currentThemeI
   };
 
   useEffect(() => {
-    if (visible && hasPermission('UPDATE', currentThemeId)) {
+    if (visible && hasPermission('write', currentThemeId)) {
       loadPendingJokes();
     }
   }, [visible, currentThemeId]);
@@ -108,7 +108,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ visible, onClose, currentThemeI
     setRejectModalVisible(true);
   };
 
-  if (!hasPermission('UPDATE', currentThemeId)) {
+  if (!hasPermission('write', currentThemeId)) {
     return null;
   }
 

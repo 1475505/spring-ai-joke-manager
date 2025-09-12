@@ -20,7 +20,7 @@ CREATE TABLE users (
 CREATE TABLE themes (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
+    prompt TEXT, -- AI生成笑话的特征描述
     icon VARCHAR(50),
     created_by BIGINT NOT NULL REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -111,10 +111,10 @@ INSERT INTO users (id, user_name, password_hash, role, avatar_url) VALUES
 (3, 'user', 'hash_value_3', 'USER', 'avatar3.jpg');
 
 -- 示例：主题数据
-INSERT INTO themes (id, name, description, icon, created_by) VALUES
-(1, '鸡煲笑话', '关于《杀戮尖塔》中鸡煲的搞笑段子', '🐔', 1),
-(2, '赛诺笑话', '关于《原神》中赛诺的搞笑段子', '⚡', 1),
-(3, '字节蹲坑笑话', '关于字节跳动的职场搞笑段子', '💻', 1);
+INSERT INTO themes (id, name, prompt, icon, created_by) VALUES
+(1, '鸡煲笑话', '生成关于《杀戮尖塔》游戏中鸡煲角色的搞笑段子，包含游戏机制、卡牌、战斗等元素', '🐔', 1),
+(2, '赛诺笑话', '生成关于《原神》游戏中赛诺角色的冷笑话，体现其严肃但又爱讲冷笑话的性格特点', '⚡', 1),
+(3, '字节蹲坑笑话', '生成关于字节跳动公司程序员日常工作的搞笑段子，包含加班、产品需求、技术问题等职场元素', '💻', 1);
 
 -- 示例：笑话数据
 INSERT INTO jokes (id, title, content, theme_id, ai_score, final_score, quality_level, status, created_by, updated_by) VALUES

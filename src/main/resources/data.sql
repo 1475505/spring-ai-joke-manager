@@ -37,7 +37,7 @@ CREATE TABLE users (
 CREATE TABLE themes (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
+    prompt TEXT, -- AI生成笑话的特征描述
     icon VARCHAR(50),
     created_by BIGINT NOT NULL REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -111,16 +111,16 @@ INSERT INTO users (user_name, password_hash, role, avatar_url) VALUES
 ('user', '6ad14ba9986e3615423dfca256d04e3f', 'USER', 'https://example.com/avatars/user.jpg');
 
 -- 插入主题数据
-INSERT INTO themes (name, description, icon, created_by) VALUES
-('鸡煲笑话', '关于《杀戮尖塔》中鸡煲的搞笑段子，分享游戏中的幽默时刻', '🐔', 1),
-('赛诺笑话', '关于《原神》中赛诺的搞笑段子，记录旅行者的欢乐时光', '⚡', 1),
-('字节蹲坑笑话', '关于字节跳动的职场搞笑段子，程序员的日常生活写照', '💻', 1);
+INSERT INTO themes (name, prompt, icon, created_by) VALUES
+('鸡煲笑话', '生成关于《杀戮尖塔》游戏中鸡煲角色的搞笑段子，包含游戏机制、卡牌、战斗等元素，体现鸡煲的可爱和游戏的策略性', '🐔', 1),
+('赛诺笑话', '生成关于《原神》游戏中赛诺角色的冷笑话，体现其严肃但又爱讲冷笑话的性格特点，包含沙漠、雷元素、学者等元素', '⚡', 1),
+('字节蹲坑笑话', '生成关于字节跳动公司程序员日常工作的搞笑段子，包含加班、产品需求、技术问题、互联网公司文化等职场元素', '💻', 1);
 
--- 插入用户主题权限数据（admin用户对所有主题具有写入和管理权限）
+-- 插入用户主题权限数据
 INSERT INTO user_theme_permissions (user_id, theme_id, write_permission, admin_permission) VALUES
 (2, 1, true, true),
-(2, 2, true, true),
-(2, 3, true, true);
+(2, 2, true, false),
+(2, 3, false, false);
 
 -- 插入笑话数据
 -- 鸡煲笑话

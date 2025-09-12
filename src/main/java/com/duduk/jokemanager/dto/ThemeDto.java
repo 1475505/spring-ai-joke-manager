@@ -22,8 +22,8 @@ public class ThemeDto {
         @Schema(description = "主题名称", example = "搞笑段子")
         private String name;
         
-        @Schema(description = "主题描述", example = "收集各种搞笑段子")
-        private String description;
+        @Schema(description = "AI生成笑话的特征描述", example = "生成关于程序员日常工作的搞笑段子")
+        private String prompt;
         
         @Schema(description = "主题图标", example = "😄")
         private String icon;
@@ -39,11 +39,11 @@ public class ThemeDto {
         
         public ThemeInfo() {}
         
-        public ThemeInfo(Long id, String name, String description, String icon, 
+        public ThemeInfo(Long id, String name, String prompt, String icon, 
                         UserInfo createdBy, LocalDateTime createdAt, LocalDateTime updatedAt) {
             this.id = id;
             this.name = name;
-            this.description = description;
+            this.prompt = prompt;
             this.icon = icon;
             this.createdBy = createdBy;
             this.createdAt = createdAt;
@@ -55,8 +55,8 @@ public class ThemeDto {
         public void setId(Long id) { this.id = id; }
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
-        public String getDescription() { return description; }
-        public void setDescription(String description) { this.description = description; }
+        public String getPrompt() { return prompt; }
+        public void setPrompt(String prompt) { this.prompt = prompt; }
         public String getIcon() { return icon; }
         public void setIcon(String icon) { this.icon = icon; }
         public UserInfo getCreatedBy() { return createdBy; }
@@ -77,17 +77,17 @@ public class ThemeDto {
         @Size(min = 2, max = 50, message = "主题名称长度必须在2-50字符之间")
         private String name;
         
-        @Schema(description = "主题描述", example = "收集各种搞笑段子")
-        @Size(max = 500, message = "主题描述长度不能超过500字符")
-        private String description;
+        @Schema(description = "AI生成笑话的特征描述", example = "生成关于程序员日常工作的搞笑段子")
+        @Size(max = 500, message = "AI生成提示词长度不能超过500字符")
+        private String prompt;
         
         @Schema(description = "主题图标", example = "😄")
         private String icon;
         
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
-        public String getDescription() { return description; }
-        public void setDescription(String description) { this.description = description; }
+        public String getPrompt() { return prompt; }
+        public void setPrompt(String prompt) { this.prompt = prompt; }
         public String getIcon() { return icon; }
         public void setIcon(String icon) { this.icon = icon; }
     }
@@ -101,17 +101,17 @@ public class ThemeDto {
         @Size(min = 2, max = 50, message = "主题名称长度必须在2-50字符之间")
         private String name;
         
-        @Schema(description = "主题描述", example = "收集各种搞笑段子")
-        @Size(max = 500, message = "主题描述长度不能超过500字符")
-        private String description;
+        @Schema(description = "AI生成笑话的特征描述", example = "生成关于程序员日常工作的搞笑段子")
+        @Size(max = 500, message = "AI生成提示词长度不能超过500字符")
+        private String prompt;
         
         @Schema(description = "主题图标", example = "😄")
         private String icon;
         
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
-        public String getDescription() { return description; }
-        public void setDescription(String description) { this.description = description; }
+        public String getPrompt() { return prompt; }
+        public void setPrompt(String prompt) { this.prompt = prompt; }
         public String getIcon() { return icon; }
         public void setIcon(String icon) { this.icon = icon; }
     }

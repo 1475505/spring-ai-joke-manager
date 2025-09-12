@@ -20,7 +20,7 @@ GET /themes
       {
         "id": "uuid",
         "name": "鸡煲笑话",
-        "description": "杀戮尖塔故障机器人笑话",
+        "prompt": "生成关于《杀戮尖塔》游戏中鸡煲角色的搞笑段子，包含游戏机制、卡牌、战斗等元素",
         "icon": "😄",
         "createdBy": {
           "id": "uuid",
@@ -44,7 +44,7 @@ Content-Type: application/json
 
 {
   "name": "string",           // 必需，2-50字符，唯一
-  "description": "string",    // 可选，最大500字符
+  "prompt": "string",        // 可选，AI生成笑话的特征描述，最大500字符
   "icon": "string"          // 可选，emoji或图标URL
 }
 ```
@@ -57,7 +57,7 @@ Content-Type: application/json
 
 {
   "name": "string",
-  "description": "string",
+  "prompt": "string",
   "icon": "string"
 }
 ```
@@ -107,24 +107,24 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "userId": "uuid",
-  "permissionLevel": "read|write|admin"
+  "userId": "123",
+  "permissionLevel": "write|admin"
 }
 ```
 
-### 更新主题管理员权限
+### 更新主题权限
 ```http
 PUT /themes/{themeId}/permissions/{userId}
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "permissionLevel": "read|write|admin",
+  "permissionLevel": "write|admin",
   "note": "string"
 }
 ```
 
-### 移除主题管理员
+### 移除主题权限
 ```http
 DELETE /themes/{themeId}/permissions/{userId}
 Authorization: Bearer <token>

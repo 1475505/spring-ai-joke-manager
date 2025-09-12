@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Layout, Button, Space, Typography, Select, Input, message, Grid, Menu, Drawer, Tabs, Modal, Card, Dropdown } from 'antd';
-import { UserOutlined, PlusOutlined, LogoutOutlined, MenuOutlined, SearchOutlined, CommentOutlined, ThunderboltOutlined, AuditOutlined, SettingOutlined, EditOutlined, DownOutlined } from '@ant-design/icons';
-import { jokesAPI } from './services/api';
+import { Layout, Button, Space, Typography, Select, Input, message, Grid, Menu, Drawer, Tabs, Modal, Card, Dropdown, Form } from 'antd';
+import { UserOutlined, PlusOutlined, LogoutOutlined, MenuOutlined, SearchOutlined, CommentOutlined, ThunderboltOutlined, AuditOutlined, SettingOutlined, EditOutlined, DownOutlined, AppstoreOutlined, DeleteOutlined } from '@ant-design/icons';
+import { jokesAPI, themesAPI } from './services/api';
 import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
 import JokeCard from './components/JokeCard';
@@ -10,6 +10,8 @@ import CreateJokeModal from './components/CreateJokeModal';
 import AdminPanel from './components/AdminPanel';
 import ProfileEditModal from './components/ProfileEditModal';
 import OpenAIConfigModal from './components/OpenAIConfigModal';
+import ThemeManagementModal from './components/ThemeManagementModal';
+
 import { ThemeComments } from './components/theme/ThemeComments';
 import './App.css';
 
@@ -50,7 +52,7 @@ interface Joke {
 }
 
 function App() {
-  const { user, isLoggedIn, logout, hasPermission, loadUserPermissions } = useAuthStore();
+  const { user, isLoggedIn, logout, hasPermission, hasAnyThemeAdminPermission, loadUserPermissions } = useAuthStore();
   const [jokes, setJokes] = useState<Joke[]>([]);
   const [loading, setLoading] = useState(false);
   const [loginModalVisible, setLoginModalVisible] = useState(false);
@@ -67,6 +69,7 @@ function App() {
   const [randomJoke, setRandomJoke] = useState<Joke | null>(null);
   const [profileEditModalVisible, setProfileEditModalVisible] = useState(false);
   const [openAIConfigModalVisible, setOpenAIConfigModalVisible] = useState(false);
+
   const screens = useBreakpoint();
 
   const { setCurrentTheme: setThemeInStore, themes, currentThemeId, loadThemes } = useThemeStore();
@@ -112,6 +115,8 @@ function App() {
     window.location.reload(); // 登出后刷新整个页面
   };
 
+
+
   useEffect(() => {
     loadThemes();
   }, [loadThemes]);
@@ -124,7 +129,7 @@ function App() {
 
   // 当用户登录状态或主题改变时，设置默认的tab状态
   useEffect(() => {
-    if (isLoggedIn && currentThemeId && hasPermission('UPDATE', currentThemeId)) {
+    if (isLoggedIn && currentThemeId && hasPermission('write', currentThemeId)) {
       // 具有写入权限的用户默认显示全部笑话
       setShowMyJokes(false);
     }
@@ -142,10 +147,14 @@ function App() {
 
   const isMobile = !screens.md;
 
-  const themeOptions = themes.map(theme => ({
-    key: theme.name,
-    label: theme.name
-  }));
+  // 左侧主题列表使用固定排序（按ID排序），不受主题管理界面排序影响
+  const themeOptions = themes
+    .slice() // 创建副本避免修改原数组
+    .sort((a, b) => a.id - b.id) // 按ID升序排列，保持固定顺序
+    .map(theme => ({
+      key: theme.name,
+      label: theme.name
+    }));
 
   const renderSiderContent = () => (
     <div style={{ padding: '16px 0' }}>
@@ -192,7 +201,7 @@ function App() {
           </Select>
         )}
 
-        {isLoggedIn && hasPermission('UPDATE', currentThemeId || undefined) && (
+        {isLoggedIn && hasPermission('write', currentThemeId || undefined) && (
           <Select
             value={statusFilter}
             onChange={setStatusFilter}
@@ -235,7 +244,7 @@ function App() {
         </Button>
         
 
-        {hasPermission('UPDATE', currentThemeId || undefined) && (
+        {hasPermission('write', currentThemeId || undefined) && (
           <Button
             icon={<AuditOutlined />}
             onClick={() => setAdminPanelVisible(true)}
@@ -262,6 +271,7 @@ function App() {
         label: 'OpenAI配置',
         onClick: () => setOpenAIConfigModalVisible(true),
       },
+
       {
         type: 'divider' as const,
       },
@@ -377,7 +387,7 @@ function App() {
                         key={joke.id} 
                         joke={joke} 
                         onUpdate={loadJokes} 
-                        showStatus={showMyJokes || hasPermission('UPDATE', currentThemeId || undefined)} 
+                        showStatus={showMyJokes || hasPermission('write', currentThemeId || undefined)} 
                       />
                     ))}
                   </div>
@@ -392,6 +402,21 @@ function App() {
                 ),
                 children: <ThemeComments theme={currentTheme} />,
               },
+              ...(user?.role === 'ROOT' || hasAnyThemeAdminPermission() ? [{
+                key: 'theme-management',
+                label: (
+                  <span>
+                    <AppstoreOutlined /> 主题管理
+                  </span>
+                ),
+                children: (
+                  <ThemeManagementModal 
+                    visible={true} 
+                    onClose={() => {}} 
+                    embedded={true} 
+                  />
+                ),
+              }] : [])
             ]}
           />
           {jokes.length === 0 && !loading && (
@@ -511,6 +536,8 @@ function App() {
           message.success('OpenAI配置保存成功');
         }}
       />
+
+
     </Layout>
   );
 }

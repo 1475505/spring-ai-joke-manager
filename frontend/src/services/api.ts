@@ -282,18 +282,28 @@ export const themesAPI = {
 
   createTheme: (data: {
     name: string;
-    description?: string;
+    prompt?: string;
     icon?: string;
   }) => api.post('/themes', data),
 
   updateTheme: (id: number, data: {
     name?: string;
-    description?: string;
+    prompt?: string;
     icon?: string;
   }) => api.put(`/themes/${id}`, data),
 
   deleteTheme: (id: number) => {
     return api.delete(`/themes/${id}`);
+  },
+
+  // 权限管理API
+  grantPermission: (themeId: number, data: {
+    userId: number;
+    permissionType: string;
+  }) => api.post(`/themes/${themeId}/permissions`, data),
+
+  revokePermission: (themeId: number, userId: number) => {
+    return api.delete(`/themes/${themeId}/permissions/${userId}`);
   },
 
   getThemeComments: (themeId: number, page = 0, size = 5) => {

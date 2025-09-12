@@ -4,7 +4,7 @@ import { themesAPI } from '../services/api';
 interface Theme {
   id: number;
   name: string;
-  description?: string;
+  prompt?: string;
   icon?: string;
   createdBy: {
     id: number;
@@ -47,7 +47,13 @@ interface ThemeState {
   // Theme management
   setCurrentTheme: (theme: string) => void;
   loadThemes: () => Promise<void>;
-  createTheme: (data: { name: string; description?: string; icon?: string }) => Promise<void>;
+  createTheme: (data: { name: string; prompt?: string; icon?: string }) => Promise<void>;
+  updateTheme: (id: number, data: { name?: string; prompt?: string; icon?: string }) => Promise<void>;
+  deleteTheme: (id: number) => Promise<void>;
+  
+  // Permission management
+  grantPermission: (themeId: number, userId: number, permissionType: string) => Promise<void>;
+  revokePermission: (themeId: number, userId: number) => Promise<void>;
   
   // Comment management
   loadThemeComments: (themeId: number) => Promise<void>;
@@ -104,6 +110,66 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       await get().loadThemes();
     } catch (error: any) {
       set({ error: error.message || 'Failed to create theme' });
+      console.error(error);
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  updateTheme: async (id, data) => {
+    try {
+      set({ loading: true, error: null });
+      
+      await themesAPI.updateTheme(id, data);
+      // 重新加载主题列表
+      await get().loadThemes();
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to update theme' });
+      console.error(error);
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  deleteTheme: async (id) => {
+    try {
+      set({ loading: true, error: null });
+      
+      await themesAPI.deleteTheme(id);
+      // 重新加载主题列表
+      await get().loadThemes();
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to delete theme' });
+      console.error(error);
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  grantPermission: async (themeId, userId, permissionType) => {
+    try {
+      set({ loading: true, error: null });
+      
+      await themesAPI.grantPermission(themeId, { userId, permissionType });
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to grant permission' });
+      console.error(error);
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  revokePermission: async (themeId, userId) => {
+    try {
+      set({ loading: true, error: null });
+      
+      await themesAPI.revokePermission(themeId, userId);
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to revoke permission' });
       console.error(error);
       throw error;
     } finally {

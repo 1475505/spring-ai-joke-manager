@@ -174,6 +174,7 @@ const OpenAIConfigModal: React.FC<OpenAIConfigModalProps> = ({ visible, onClose,
           <div>• <strong>模型:</strong> 选择要使用的AI模型</div>
           <div>• <strong>Base URL:</strong> AI API的基础URL，支持代理服务</div>
           <div style={{ marginTop: '8px', fontStyle: 'italic' }}>配置将只保存在浏览器本地存储中，不会存储在服务器上</div>
+          <div style={{ marginTop: '8px', fontStyle: 'italic' }}>希望配置的模型支持json output和tool call，否则可能无法正常使用</div>
         </div>
       </div>
     </Modal>

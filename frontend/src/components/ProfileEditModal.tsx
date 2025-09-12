@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, Button, message, Grid } from 'antd';
 import { UserOutlined, LinkOutlined } from '@ant-design/icons';
-import { authAPI } from '../services/api';
+import { authAPI, usersAPI } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 
 const { useBreakpoint } = Grid;
@@ -36,23 +36,21 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ visible, onClose, o
 
     setLoading(true);
     try {
+      let updatedUser = { ...user };
+      
       // 更新头像URL
       if (values.avatarUrl !== user.avatarUrl) {
         await authAPI.updateProfile(values.avatarUrl);
+        updatedUser.avatarUrl = values.avatarUrl || user.avatarUrl;
       }
 
-      // 如果用户名发生变化，需要调用用户管理接口
+      // 如果用户名发生变化，调用用户管理接口
       if (values.username && values.username !== user.username) {
-        // 注意：这里需要后端支持用户自己更新用户名的接口
-        // 目前的updateProfile接口只支持avatarUrl
-        message.warning('用户名修改功能暂未开放');
+        await usersAPI.updateUser(user.id, { username: values.username });
+        updatedUser.username = values.username;
       }
 
       // 更新本地用户信息
-      const updatedUser = {
-        ...user,
-        avatarUrl: values.avatarUrl || user.avatarUrl
-      };
       updateUser(updatedUser);
 
       message.success('个人信息更新成功！');
@@ -91,7 +89,6 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ visible, onClose, o
           <Input
             prefix={<UserOutlined />}
             placeholder="请输入用户名"
-            disabled // 暂时禁用用户名修改
           />
         </Form.Item>
 

@@ -27,6 +27,7 @@ interface AuthState {
   updateUser: (user: Partial<User>) => void;
   updateTokens: (accessToken: string, refreshToken?: string) => void;
   hasPermission: (operation: string, themeId?: number) => boolean;
+  hasAnyThemeAdminPermission: () => boolean;
   isRoot: () => boolean;
   loadUserPermissions: () => Promise<void>;
 }
@@ -44,6 +45,10 @@ export const useAuthStore = create<AuthState>()(
           refreshToken: refreshToken
         };
         set({ user: updatedUser, isLoggedIn: true });
+        // 登录成功后自动获取用户权限
+        setTimeout(() => {
+          get().loadUserPermissions();
+        }, 100);
       },
       
       logout: () => {
@@ -75,7 +80,7 @@ export const useAuthStore = create<AuthState>()(
         const { user, isLoggedIn } = get();
         if (!isLoggedIn || !user) {
           // 未登录用户只能查看和评论
-          return ['READ', 'COMMENT'].includes(operation);
+          return ['read', 'comment'].includes(operation.toLowerCase());
         }
         
         // ROOT用户拥有所有权限
@@ -94,22 +99,37 @@ export const useAuthStore = create<AuthState>()(
               return true;
             }
             
-            // write权限：写入权限，包含创建、更新、删除、评分、评论、审批等操作
+            // write权限：写入权限，包含新增、审批、评分、删除笑话等操作
             if (level === 'write') {
-              return ['READ', 'CREATE', 'ADD', 'COMMENT', 'SCORE', 'UPDATE', 'DELETE'].includes(operation);
+              return ['read', 'write', 'create', 'update', 'delete', 'score', 'approve', 'comment'].includes(operation.toLowerCase());
             }
             
-            // 如果有主题权限但级别不匹配，只允许基本操作
-            return ['READ', 'COMMENT'].includes(operation);
+            // read权限：只读权限，只能查看和评论
+            if (level === 'read') {
+              return ['read', 'comment'].includes(operation.toLowerCase());
+            }
           }
         }
         
-        // 普通USER的权限（无主题权限时）
+        // 普通USER的权限（无主题权限时）- 可以浏览、投稿、评论
         if (user.role === 'USER') {
-          return ['READ', 'CREATE', 'COMMENT', 'SCORE', 'UPDATE', 'DELETE'].includes(operation);
+          return ['read', 'create', 'comment'].includes(operation.toLowerCase());
         }
         
         return false;
+      },
+      
+      // 检查用户是否有任何主题的admin权限
+      hasAnyThemeAdminPermission: () => {
+        const { user } = get();
+        if (!user) {
+          return false;
+        }
+        // ROOT用户拥有所有权限
+        if (user.role === 'ROOT') {
+          return true;
+        }
+        return user.themePermissions?.some(p => p.permissionLevel === 'admin') || false;
       },
       
       isRoot: () => {
@@ -124,7 +144,7 @@ export const useAuthStore = create<AuthState>()(
         }
         
         try {
-          const response = await fetch(`/api/users/${user.id}/permissions`, {
+          const response = await fetch(`http://localhost:8080/users/${user.id}/permissions`, {
             headers: {
               'Authorization': `Bearer ${user.token}`,
               'Content-Type': 'application/json'

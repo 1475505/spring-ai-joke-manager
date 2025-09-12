@@ -20,7 +20,7 @@ public class Theme {
     private String name;
     
     @Column(length = 500)
-    private String description;
+    private String prompt; // AI生成笑话的特征描述
     
     @Column(length = 50)
     private String icon;
@@ -52,15 +52,15 @@ public class Theme {
     // Constructors
     public Theme() {}
     
-    public Theme(String name, String description, User createdBy) {
+    public Theme(String name, String prompt, User createdBy) {
         this.name = name;
-        this.description = description;
+        this.prompt = prompt;
         this.createdBy = createdBy;
     }
     
-    public Theme(String name, String description, String icon, User createdBy) {
+    public Theme(String name, String prompt, String icon, User createdBy) {
         this.name = name;
-        this.description = description;
+        this.prompt = prompt;
         this.icon = icon;
         this.createdBy = createdBy;
     }
@@ -82,12 +82,12 @@ public class Theme {
         this.name = name;
     }
     
-    public String getDescription() {
-        return description;
+    public String getPrompt() {
+        return prompt;
     }
     
-    public void setDescription(String description) {
-        this.description = description;
+    public void setPrompt(String prompt) {
+        this.prompt = prompt;
     }
     
     public String getIcon() {

@@ -22,7 +22,7 @@ public interface ThemeRepository extends JpaRepository<Theme, Long> {
     @Query("SELECT t FROM Theme t ORDER BY t.createdAt DESC")
     List<Theme> findAllOrderByCreatedAtDesc();
     
-    @Query("SELECT t FROM Theme t WHERE t.name LIKE %:keyword% OR t.description LIKE %:keyword%")
+    @Query("SELECT t FROM Theme t WHERE t.name LIKE %:keyword% OR t.prompt LIKE %:keyword%")
     List<Theme> findByKeyword(@Param("keyword") String keyword);
     
     boolean existsByName(String name);

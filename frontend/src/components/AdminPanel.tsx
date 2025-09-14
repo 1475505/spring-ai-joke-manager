@@ -75,7 +75,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ visible, onClose, currentThemeI
       form.resetFields();
       setSelectedJoke(null);
       loadPendingJokes();
-      onSuccess?.();
     } catch (error) {
       message.error('审批失败');
     }
@@ -92,7 +91,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ visible, onClose, currentThemeI
       rejectForm.resetFields();
       setSelectedJoke(null);
       loadPendingJokes();
-      onSuccess?.();
     } catch (error) {
       message.error('拒绝失败');
     }

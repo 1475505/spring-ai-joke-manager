@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Layout, Button, Space, Typography, Select, Input, message, Grid, Menu, Drawer, Tabs, Modal, Card, Dropdown, Form } from 'antd';
-import { UserOutlined, PlusOutlined, LogoutOutlined, MenuOutlined, SearchOutlined, CommentOutlined, ThunderboltOutlined, AuditOutlined, SettingOutlined, EditOutlined, DownOutlined, AppstoreOutlined, DeleteOutlined } from '@ant-design/icons';
+import { UserOutlined, PlusOutlined, LogoutOutlined, MenuOutlined, SearchOutlined, CommentOutlined, ThunderboltOutlined, AuditOutlined, SettingOutlined, EditOutlined, DownOutlined, AppstoreOutlined, DeleteOutlined, BulbOutlined } from '@ant-design/icons';
 import { jokesAPI, themesAPI } from './services/api';
 import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
@@ -11,6 +11,7 @@ import AdminPanel from './components/AdminPanel';
 import ProfileEditModal from './components/ProfileEditModal';
 import OpenAIConfigModal from './components/OpenAIConfigModal';
 import ThemeManagementModal from './components/ThemeManagementModal';
+import AIGenerateModal from './components/AIGenerateModal';
 
 import { ThemeComments } from './components/theme/ThemeComments';
 import './App.css';
@@ -61,7 +62,7 @@ function App() {
   const [currentTheme, setCurrentTheme] = useState('鸡煲笑话');
   const [sortBy, setSortBy] = useState('created');
   const [showMyJokes, setShowMyJokes] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('APPROVED');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [siderCollapsed, setSiderCollapsed] = useState(false);
   const [mobileDrawerVisible, setMobileDrawerVisible] = useState(false);
@@ -69,6 +70,7 @@ function App() {
   const [randomJoke, setRandomJoke] = useState<Joke | null>(null);
   const [profileEditModalVisible, setProfileEditModalVisible] = useState(false);
   const [openAIConfigModalVisible, setOpenAIConfigModalVisible] = useState(false);
+  const [aiGenerateModalVisible, setAiGenerateModalVisible] = useState(false);
 
   const screens = useBreakpoint();
 
@@ -177,6 +179,7 @@ function App() {
 
   const renderOperations = () => (
     <Space direction="vertical" size="middle" style={{ width: '100%', marginBottom: 24 }}>
+      {/* 第一行：筛选和搜索功能 */}
       <Space wrap size="middle">
         <Select
           value={sortBy}
@@ -225,7 +228,10 @@ function App() {
           size={isMobile ? 'small' : 'middle'}
           enterButton={<SearchOutlined />}
         />
-
+      </Space>
+      
+      {/* 第二行：操作按钮 */}
+      <Space wrap size="middle">
         <Button
           onClick={handleSingleRandomJoke}
           size={isMobile ? 'small' : 'middle'}
@@ -243,7 +249,15 @@ function App() {
           投稿笑话
         </Button>
         
-
+        <Button
+          icon={<BulbOutlined />}
+          onClick={() => setAiGenerateModalVisible(true)}
+          size={isMobile ? 'small' : 'middle'}
+        >
+          AI生成
+        </Button>
+        
+        {/* 需要权限校验的按钮 */}
         {hasPermission('write', currentThemeId || undefined) && (
           <Button
             icon={<AuditOutlined />}
@@ -266,13 +280,6 @@ function App() {
         onClick: () => setProfileEditModalVisible(true),
       },
       {
-        key: 'openai-config',
-        icon: <SettingOutlined />,
-        label: 'OpenAI配置',
-        onClick: () => setOpenAIConfigModalVisible(true),
-      },
-
-      {
         type: 'divider' as const,
       },
       {
@@ -285,6 +292,15 @@ function App() {
 
     return (
       <Space size={isMobile ? 'small' : 'middle'}>
+        <Button
+          icon={<SettingOutlined />}
+          onClick={() => setOpenAIConfigModalVisible(true)}
+          size={isMobile ? 'small' : 'middle'}
+          title="OpenAI配置"
+        >
+          {!isMobile && 'OpenAI配置'}
+        </Button>
+        
         {isLoggedIn ? (
           <>
             {!isMobile && (
@@ -537,6 +553,15 @@ function App() {
         }}
       />
 
+      <AIGenerateModal
+        visible={aiGenerateModalVisible}
+        onClose={() => setAiGenerateModalVisible(false)}
+        onSuccess={() => {
+          setAiGenerateModalVisible(false);
+          loadJokes();
+        }}
+        themeId={currentThemeId}
+      />
 
     </Layout>
   );

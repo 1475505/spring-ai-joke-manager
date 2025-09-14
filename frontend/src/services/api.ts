@@ -296,7 +296,7 @@ export const themesAPI = {
     return api.delete(`/themes/${id}`);
   },
 
-  // 权限管理API
+  // 权限管理
   grantPermission: (themeId: number, data: {
     userId: number;
     permissionType: string;
@@ -320,4 +320,33 @@ export const themesAPI = {
 
   deleteThemeComment: (themeId: number, commentId: number) => 
     commentsAPI.deleteThemeComment(themeId, commentId),
+};
+
+// AI API
+export const aiAPI = {
+  // AI评分单个笑话
+  scoreJoke: (data: {
+    jokeId: number;
+    apiKey: string;
+    modelName: string;
+    baseUrl: string;
+  }) => api.post('/ai/score', data),
+
+  // AI批量评分笑话
+  batchScore: (data: {
+    themeId: number;
+    apiKey: string;
+    modelName: string;
+    baseUrl: string;
+  }) => api.post('/ai/batch-score', data),
+
+  // AI生成笑话
+  generateJokes: (data: {
+    themeId: number;
+    prompt: string;
+    count: number;
+    apiKey: string;
+    modelName: string;
+    baseUrl: string;
+  }) => api.post('/ai/generate', data),
 };

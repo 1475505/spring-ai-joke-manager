@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Button, Space, Typography, Modal, Form, Input, Rate, message, Grid, Popconfirm, Tooltip } from 'antd';
-import { EditOutlined, DeleteOutlined, StarOutlined, CommentOutlined, LikeOutlined, LikeFilled, InfoCircleOutlined, SettingOutlined } from '@ant-design/icons';
-import { jokesAPI } from '../services/api';
+import { EditOutlined, DeleteOutlined, StarOutlined, CommentOutlined, LikeOutlined, LikeFilled, InfoCircleOutlined, SettingOutlined, RobotOutlined } from '@ant-design/icons';
+import { jokesAPI, aiAPI } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import CommentList from './CommentList';
 
@@ -58,6 +58,7 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(joke.statistics.likeCount);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [aiScoreLoading, setAiScoreLoading] = useState(false);
 
   // 将0-10分映射到0-5星，提高精度
   const getStarRating = (score: number) => {
@@ -176,6 +177,64 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
     }
   };
 
+  const handleAIScore = async () => {
+    if (!user || !hasPermission('admin', joke.theme.id)) {
+      message.error('权限不足，只有主题管理员可以使用AI评分');
+      return;
+    }
+
+    // 从localStorage读取OpenAI配置
+    let config;
+    try {
+      const configStr = localStorage.getItem('openai_config');
+      if (!configStr) {
+        message.error('请先在右上角配置OpenAI设置');
+        return;
+      }
+      config = JSON.parse(configStr);
+      if (!config.apiKey || !config.model || !config.baseUrl) {
+        message.error('OpenAI配置不完整，请重新配置');
+        return;
+      }
+    } catch (error) {
+      message.error('读取OpenAI配置失败');
+      return;
+    }
+
+    setAiScoreLoading(true);
+    try {
+      const response = await aiAPI.scoreJoke({
+        jokeId: joke.id,
+        apiKey: config.apiKey,
+        modelName: config.model,
+        baseUrl: config.baseUrl
+      });
+      
+      // 显示详细的AI评分结果弹出框
+      const aiScore = response.data?.aiScore;
+      if (aiScore) {
+        Modal.success({
+          title: 'AI评分完成',
+          content: (
+            <div>
+              <p><strong>评分：</strong>{aiScore.score}分</p>
+              <p><strong>反馈：</strong>{aiScore.feedback}</p>
+            </div>
+          ),
+          okText: '确认'
+        });
+      } else {
+        message.success('AI评分完成');
+      }
+      
+      onUpdate();
+    } catch (error) {
+      message.error('AI评分失败');
+    } finally {
+      setAiScoreLoading(false);
+    }
+  };
+
 
   return (
     <>
@@ -209,117 +268,187 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
             </Tooltip>
           </Space>
         }
-        actions={[
-          <Button
-            key="like"
-            type="text"
-            icon={liked ? <LikeFilled style={{ color: '#1890ff' }} /> : <LikeOutlined />}
-            onClick={handleLike}
-            size="small"
-            loading={loading}
-          >
-            {isMobile ? likeCount : `点赞 ${likeCount}`}
-          </Button>,
-          <Button
-            key="comment"
-            type="text"
-            icon={<CommentOutlined />}
-            onClick={() => setCommentsVisible(!commentsVisible)}
-            size="small"
-          >
-            {isMobile ? '' : (commentsVisible ? '收起评论' : '评论')}
-          </Button>,
-          ...(user && hasPermission('score', joke.theme.id) ? [
-            <Button
-              key="score"
-              type="text"
-              icon={<StarOutlined />}
-              onClick={() => setScoreModalVisible(true)}
-              size="small"
-            >
-              {isMobile ? '' : '评分'}
-            </Button>
-          ] : []),
-          ...(hasPermission('write', joke.theme.id) && joke.status !== 'REJECTED' ? [
-            <Button
-              key="edit"
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => {
-                form.setFieldsValue({
-                  title: joke.title,
-                  content: joke.content
-                });
-                setEditModalVisible(true);
-              }}
-              size="small"
-            >
-              {isMobile ? '' : '编辑'}
-            </Button>
-          ] : []),
-          ...(hasPermission('write', joke.theme.id) ? [
-            <Button
-              key="status"
-              type="text"
-              icon={<SettingOutlined />}
-              onClick={() => setStatusModalVisible(true)}
-              size="small"
-            >
-              {isMobile ? '' : '状态管理'}
-            </Button>
-          ] : [])
-        ]}
-        size="small"
-        bodyStyle={{ padding: isMobile ? '12px' : '16px' }}
-        headStyle={{ padding: isMobile ? '8px 12px' : '12px 16px' }}
-        style={{ height: '100%' }}
-      >
-        <Paragraph 
-          style={{ 
-            fontSize: isMobile ? 14 : 15, 
-            marginBottom: isMobile ? 8 : 12,
-            lineHeight: 1.5
-          }}
-        >
-          {joke.content}
-        </Paragraph>
-        <div style={{ 
-          marginTop: isMobile ? 8 : 12, 
-          color: '#666', 
-          fontSize: isMobile ? 11 : 12 
-        }}>
-          <Space 
-            split={<span style={{ color: '#d9d9d9' }}>•</span>} 
-            size={4}
-            direction={isMobile ? 'vertical' : 'horizontal'}
-            style={{ width: '100%' }}
-          >
-            <span>主题: {joke.theme.name}</span>
-            <span>创建者: {joke.author?.username || '系统'}</span>
-            <span>{new Date(joke.createdAt).toLocaleDateString()}</span>
-            {showStatus && (
-              <span style={{ 
-                color: joke.status === 'APPROVED' ? '#52c41a' : 
-                       joke.status === 'REJECTED' ? '#ff4d4f' : 
-                       joke.status === 'PENDING' ? '#faad14' : '#666'
-              }}>
-                状态: {joke.status === 'APPROVED' ? '已通过' : 
-                       joke.status === 'REJECTED' ? '已拒绝' : 
-                       joke.status === 'PENDING' ? '待审核' : joke.status}
-              </span>
-            )}
-          </Space>
-        </div>
 
-        {commentsVisible && (
+        size="small"
+        bodyStyle={{ padding: 0, display: 'flex', flexDirection: 'column' }}
+        headStyle={{ padding: isMobile ? '8px 12px' : '12px 16px' }}
+        style={{ minHeight: '200px' }}
+      >
+        {/* 内容区域 */}
+        <div style={{ 
+          flex: 1, 
+          padding: isMobile ? '12px' : '16px',
+          paddingBottom: 0
+        }}>
+          <Paragraph 
+            style={{ 
+              fontSize: isMobile ? 14 : 15, 
+              marginBottom: isMobile ? 8 : 12,
+              lineHeight: 1.5
+            }}
+          >
+            {joke.content}
+          </Paragraph>
           <div style={{ 
-            marginTop: isMobile ? 12 : 16, 
-            borderTop: '1px solid #f0f0f0', 
-            paddingTop: isMobile ? 12 : 16 
+            marginTop: isMobile ? 8 : 12, 
+            color: '#666', 
+            fontSize: isMobile ? 11 : 12 
           }}>
-            <CommentList jokeId={joke.id} />
+            <Space 
+              split={<span style={{ color: '#d9d9d9' }}>•</span>} 
+              size={4}
+              direction={isMobile ? 'vertical' : 'horizontal'}
+              style={{ width: '100%' }}
+            >
+              <span>主题: {joke.theme.name}</span>
+              <span>创建者: {joke.author?.username || '系统'}</span>
+              <span>{new Date(joke.createdAt).toLocaleDateString()}</span>
+              {showStatus && (
+                <span style={{ 
+                  color: joke.status === 'APPROVED' ? '#52c41a' : 
+                         joke.status === 'REJECTED' ? '#ff4d4f' : 
+                         joke.status === 'PENDING' ? '#faad14' : '#666'
+                }}>
+                  状态: {joke.status === 'APPROVED' ? '已通过' : 
+                         joke.status === 'REJECTED' ? '已拒绝' : 
+                         joke.status === 'PENDING' ? '待审核' : joke.status}
+                </span>
+              )}
+            </Space>
+           </div>
+           
+           {commentsVisible && (
+             <div style={{ 
+               marginTop: isMobile ? 12 : 16, 
+               borderTop: '1px solid #f0f0f0', 
+               paddingTop: isMobile ? 12 : 16 
+             }}>
+               <CommentList jokeId={joke.id} />
+             </div>
+           )}
+         </div>
+
+         {/* 按钮区域 - 固定在底部 */}
+         <div style={{ 
+           borderTop: '1px solid #f0f0f0', 
+           padding: isMobile ? '6px 8px' : '8px 12px',
+           marginTop: 'auto',
+           backgroundColor: '#fafafa'
+         }}>
+          {/* 第一行：无需登录都有的按钮 */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-around', 
+            alignItems: 'center',
+            marginBottom: '6px',
+            flexWrap: 'nowrap'
+          }}>
+            <Button
+              type="text"
+              icon={liked ? <LikeFilled style={{ color: '#1890ff' }} /> : <LikeOutlined />}
+              onClick={handleLike}
+              size={isMobile ? 'small' : 'middle'}
+              loading={loading}
+              style={{ 
+                minWidth: isMobile ? '60px' : '80px',
+                fontSize: isMobile ? '12px' : '14px',
+                padding: isMobile ? '2px 6px' : '4px 8px'
+              }}
+            >
+              {isMobile ? likeCount : `点赞 ${likeCount}`}
+            </Button>
+            <Button
+              type="text"
+              icon={<CommentOutlined />}
+              onClick={() => setCommentsVisible(!commentsVisible)}
+              size={isMobile ? 'small' : 'middle'}
+              style={{ 
+                minWidth: isMobile ? '60px' : '80px',
+                fontSize: isMobile ? '12px' : '14px',
+                padding: isMobile ? '2px 6px' : '4px 8px'
+              }}
+            >
+              {isMobile ? '评论' : (commentsVisible ? '收起评论' : '评论')}
+            </Button>
+            <Button
+              type="text"
+              icon={<RobotOutlined />}
+              onClick={handleAIScore}
+              loading={aiScoreLoading}
+              size={isMobile ? 'small' : 'middle'}
+              style={{ 
+                minWidth: isMobile ? '60px' : '80px',
+                fontSize: isMobile ? '12px' : '14px',
+                padding: isMobile ? '2px 6px' : '4px 8px'
+              }}
+            >
+              {isMobile ? 'AI' : 'AI评分'}
+            </Button>
           </div>
-        )}
+          
+          {/* 第二行：仅有admin权限才出现的按钮 */}
+          {user && (hasPermission('score', joke.theme.id) || hasPermission('write', joke.theme.id)) && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center',
+              gap: isMobile ? '4px' : '8px',
+              flexWrap: 'nowrap'
+            }}>
+              {user && hasPermission('score', joke.theme.id) && (
+                <Button
+                  type="text"
+                  icon={<StarOutlined />}
+                  onClick={() => setScoreModalVisible(true)}
+                  size={isMobile ? 'small' : 'middle'}
+                  style={{ 
+                    minWidth: isMobile ? '50px' : '70px',
+                    fontSize: isMobile ? '12px' : '14px',
+                    padding: isMobile ? '2px 4px' : '4px 6px'
+                  }}
+                >
+                  {isMobile ? '评分' : '评分'}
+                </Button>
+              )}
+              {hasPermission('write', joke.theme.id) && joke.status !== 'REJECTED' && (
+                <Button
+                  type="text"
+                  icon={<EditOutlined />}
+                  onClick={() => {
+                    form.setFieldsValue({
+                      title: joke.title,
+                      content: joke.content
+                    });
+                    setEditModalVisible(true);
+                  }}
+                  size={isMobile ? 'small' : 'middle'}
+                  style={{ 
+                    minWidth: isMobile ? '50px' : '70px',
+                    fontSize: isMobile ? '12px' : '14px',
+                    padding: isMobile ? '2px 4px' : '4px 6px'
+                  }}
+                >
+                  {isMobile ? '编辑' : '编辑'}
+                </Button>
+              )}
+              {hasPermission('write', joke.theme.id) && (
+                <Button
+                  type="text"
+                  icon={<SettingOutlined />}
+                  onClick={() => setStatusModalVisible(true)}
+                  size={isMobile ? 'small' : 'middle'}
+                  style={{ 
+                    minWidth: isMobile ? '50px' : '70px',
+                    fontSize: isMobile ? '12px' : '14px',
+                    padding: isMobile ? '2px 4px' : '4px 6px'
+                  }}
+                >
+                  {isMobile ? '管理' : '状态管理'}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </Card>
 
       {/* 编辑模态框 */}

@@ -57,7 +57,7 @@ public class SecurityConfig {
             .and()
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/", "/health", "/error", "/auth/**", "/users", "/users/**", "/h2-console/**", "/swagger-ui/**", "/v3/api-docs/**", 
-                                "/jokes", "/jokes/**", "/themes", "/themes/**").permitAll()
+                                "/jokes", "/jokes/**", "/themes", "/themes/**", "/ai/**", "/comments", "/comments/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

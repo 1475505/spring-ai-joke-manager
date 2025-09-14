@@ -69,14 +69,38 @@ public class JokeController {
                                  getSortField(sort));
             Pageable pageable = PageRequest.of(page, size, sortObj);
             
-            Joke.Status statusEnum = Joke.Status.APPROVED; // 默认只显示已审核通过的笑话
-            if (status != null) {
+            // 检查用户是否登录以及是否有管理权限
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            boolean isAuthenticated = auth != null && auth.getDetails() instanceof JwtAuthenticationFilter.JwtUserDetails;
+            boolean hasAdminPermission = false;
+            
+            if (isAuthenticated) {
+                JwtAuthenticationFilter.JwtUserDetails userDetails = 
+                        (JwtAuthenticationFilter.JwtUserDetails) auth.getDetails();
+                Optional<User> userOpt = userService.findById(userDetails.getUserId());
+                if (userOpt.isPresent()) {
+                    User user = userOpt.get();
+                    // 检查是否为ROOT用户或有主题管理权限
+                     hasAdminPermission = user.isRoot() || 
+                         (themeId != null && user.hasThemePermission(themeId, UserThemePermission.PermissionLevel.admin));
+                }
+            }
+            
+            Joke.Status statusEnum;
+            if (status != null && !status.trim().isEmpty()) {
                 try {
                     statusEnum = Joke.Status.valueOf(status.toUpperCase());
+                    // 非管理员用户不能查看非APPROVED状态的笑话
+                    if (!hasAdminPermission && statusEnum != Joke.Status.APPROVED) {
+                        statusEnum = Joke.Status.APPROVED;
+                    }
                 } catch (IllegalArgumentException e) {
                     return ResponseEntity.badRequest()
                             .body(ApiResponse.error(400, "无效的状态值"));
                 }
+            } else {
+                // 默认只显示已通过审核的笑话，除非是管理员用户
+                statusEnum = hasAdminPermission ? null : Joke.Status.APPROVED;
             }
             
             Page<Joke> jokes = jokeService.getJokes(themeId, statusEnum, minScore, maxScore, 

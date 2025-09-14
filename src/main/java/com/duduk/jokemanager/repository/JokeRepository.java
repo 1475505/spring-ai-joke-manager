@@ -76,7 +76,10 @@ public interface JokeRepository extends JpaRepository<Joke, Long> {
     
     Page<Joke> findByThemeAndIsAiGenerate(Theme theme, Boolean isAiGenerate, Pageable pageable);
     
-    // 统计查询
+    // 通过主题ID查询
+    List<Joke> findByThemeIdAndStatus(Long themeId, Joke.Status status);
+    
+    // 统计相关查询
     Long countByTheme(Theme theme);
     
     Long countByThemeAndStatus(Theme theme, Joke.Status status);
@@ -92,4 +95,8 @@ public interface JokeRepository extends JpaRepository<Joke, Long> {
     // 待审核笑话
     @Query("SELECT j FROM Joke j WHERE j.theme = :theme AND j.status = 'PENDING' ORDER BY j.createdAt ASC")
     Page<Joke> findPendingJokesByTheme(@Param("theme") Theme theme, Pageable pageable);
+    
+    // 获取所有已批准的笑话，包含主题关联
+    @Query("SELECT j FROM Joke j JOIN FETCH j.theme WHERE j.status = 'APPROVED'")
+    List<Joke> findAllApprovedWithTheme();
 }

@@ -6,6 +6,7 @@ import com.duduk.jokemanager.repository.VectorRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
@@ -27,8 +28,17 @@ public class VectorDataInitializer implements ApplicationRunner {
     @Autowired
     private VectorRepository vectorRepository;
     
+    @Value("${vector.store.enabled:false}")
+    private boolean vectorStoreEnabled;
+    
     @Override
     public void run(ApplicationArguments args) throws Exception {
+        // 检查向量存储是否启用
+        if (!vectorStoreEnabled) {
+            logger.info("向量存储功能已禁用，跳过向量数据库初始化");
+            return;
+        }
+        
         logger.info("开始初始化向量数据库...");
         
         try {

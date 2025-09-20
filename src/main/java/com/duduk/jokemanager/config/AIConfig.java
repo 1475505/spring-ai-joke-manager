@@ -1,8 +1,11 @@
 package com.duduk.jokemanager.config;
 
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,13 +23,12 @@ public class AIConfig {
     private String defaultModel;
     
     /**
-     * 配置PGVector Store
-     * 注意：Spring AI自动配置会创建默认的vectorStore bean，这里不需要重复定义
+     * 配置PgVectorStore，使用字符串ID类型而不是UUID
+     * 因为PgVectorStore默认使用UUID作为主键，而我们的笑话ID是Long类型
+     * 这会导致向量数据库操作时出现UUID格式错误
+     * 
+     * 解决方案：配置PgVectorStore使用字符串ID类型
      */
-    // @Bean
-    // public VectorStore vectorStore(JdbcTemplate jdbcTemplate) {
-    //     return new PgVectorStore(jdbcTemplate, "ai_embeddings");
-    // }
     
     /**
      * 创建动态OpenAI客户端
@@ -43,7 +45,7 @@ public class AIConfig {
         
         // 创建ChatOptions并设置model参数
         OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
-            .withModel(defaultModel)
+            .model(defaultModel)
             .build();
         
         return new OpenAiChatModel(openAiApi, chatOptions);
@@ -69,9 +71,20 @@ public class AIConfig {
         
         // 创建ChatOptions并设置model参数
         OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
-            .withModel(model)
+            .model(model)
             .build();
         
         return new OpenAiChatModel(openAiApi, chatOptions);
+    }
+    
+    /**
+     * 配置VectorStore - 暂时使用SimpleVectorStore，因为pgvector扩展未安装
+     * 要启用pgvector，需要：
+     * 1. 在PostgreSQL中安装pgvector扩展：CREATE EXTENSION vector;
+     * 2. 修改下面的配置为PgVectorStore
+     */
+    @Bean
+    public VectorStore vectorStore(EmbeddingModel embeddingModel) {
+        return SimpleVectorStore.builder(embeddingModel).build();
     }
 }

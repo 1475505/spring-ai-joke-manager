@@ -83,7 +83,7 @@ public class AIService {
             // 调用AI进行评分
             OpenAiChatModel chatModel = aiConfig.createOpenAiChatModel(apiKey, baseUrl, modelName);
             ChatResponse response = chatModel.call(new Prompt(prompt));
-            String aiResponse = response.getResult().getOutput().getContent();
+            String aiResponse = response.getResult().getOutput().getText();
             
             // 解析AI返回的JSON结果
             String cleanedResponse = aiResponse.trim();
@@ -204,19 +204,41 @@ public class AIService {
             
             Theme theme = themeOpt.get();
             
-            // 构建生成提示词
+            // RAG：搜索相似笑话作为参考
+            String ragContext = "";
+            try {
+                String searchQuery = prompt != null ? prompt : theme.getName();
+                List<Document> similarJokes = vectorRepository.searchSimilarJokesByTheme(searchQuery, themeId, 3);
+                
+                if (!similarJokes.isEmpty()) {
+                    StringBuilder contextBuilder = new StringBuilder();
+                    contextBuilder.append("参考以下相似笑话的风格和结构：\n");
+                    for (int i = 0; i < similarJokes.size(); i++) {
+                        Document doc = similarJokes.get(i);
+                        contextBuilder.append(String.format("%d. %s\n", i + 1, doc.getText()));
+                    }
+                    contextBuilder.append("\n请基于以上参考内容，创作新的原创笑话，避免重复，保持相似的风格和幽默程度。\n");
+                    ragContext = contextBuilder.toString();
+                }
+            } catch (Exception e) {
+                // RAG失败时不影响主流程，继续正常生成
+                System.err.println("RAG搜索失败: " + e.getMessage());
+            }
+            
+            // 构建生成提示词（包含RAG上下文）
             String fullPrompt = String.format(
-                "请根据主题'%s'和用户提示'%s'生成%d个笑话。主题说明：%s。要求：1. 内容健康正面 2. 语言生动有趣 3. 符合主题特色 4. 长度适中(50-200字)。请返回JSON格式：{\"jokes\": [{\"title\": \"标题\", \"content\": \"内容\"}]}",
+                "请根据主题'%s'和用户提示'%s'生成%d个笑话。主题说明：%s。%s要求：1. 内容健康正面 2. 语言生动有趣 3. 符合主题特色 4. 长度适中(50-200字)。请返回JSON格式：{\"jokes\": [{\"title\": \"标题\", \"content\": \"内容\"}]}",
                 theme.getName(),
                 prompt != null ? prompt : "搞笑幽默",
                 count,
-                theme.getPrompt() != null ? theme.getPrompt() : "无特殊说明"
+                theme.getPrompt() != null ? theme.getPrompt() : "无特殊说明",
+                ragContext
             );
             
             // 调用AI进行生成
             OpenAiChatModel chatModel = aiConfig.createOpenAiChatModel(apiKey, baseUrl, modelName);
             ChatResponse response = chatModel.call(new Prompt(fullPrompt));
-            String aiResponse = response.getResult().getOutput().getContent();
+            String aiResponse = response.getResult().getOutput().getText();
             
             // 解析AI返回的JSON结果
             String cleanedResponse = aiResponse.trim();
@@ -271,125 +293,7 @@ public class AIService {
         }
     }
     
-    /**
-     * 获取主题知识库状态
-     */
-    public Map<String, Object> getKnowledgeStatus(Long themeId) {
-        try {
-            Optional<Theme> themeOpt = themeRepository.findById(themeId);
-            if (themeOpt.isEmpty()) {
-                throw new RuntimeException("主题不存在");
-            }
-            
-            Theme theme = themeOpt.get();
-            
-            // 统计该主题下的笑话数量和平均分
-            List<Joke> jokes = jokeRepository.findByThemeIdAndStatus(themeId, Joke.Status.APPROVED);
-            int totalJokes = jokes.size();
-            
-            double averageScore = jokes.stream()
-                .mapToDouble(joke -> joke.getFinalScore().doubleValue())
-                .average()
-                .orElse(7.0);
-            
-            // 获取向量数据库统计信息
-            Map<String, Object> vectorStats = vectorRepository.getThemeStatistics(themeId);
-            
-            Map<String, Object> result = new HashMap<>();
-            result.put("themeId", themeId);
-            result.put("themeName", theme.getName());
-            
-            Map<String, Object> knowledgeBase = new HashMap<>();
-            knowledgeBase.put("totalJokes", totalJokes);
-            knowledgeBase.put("vectorJokes", vectorStats.get("totalJokes"));
-            knowledgeBase.put("lastUpdated", LocalDateTime.now());
-            knowledgeBase.put("status", "READY");
-            knowledgeBase.put("version", "v1.0");
-            result.put("knowledgeBase", knowledgeBase);
-            
-            Map<String, Object> statistics = new HashMap<>();
-            statistics.put("averageScore", Math.round(averageScore * 10.0) / 10.0);
-            statistics.put("aiGeneratedJokes", vectorStats.get("aiGeneratedJokes"));
-            statistics.put("humanCreatedJokes", vectorStats.get("humanCreatedJokes"));
-            statistics.put("topKeywords", Arrays.asList("搞笑", "幽默", "段子"));
-            result.put("statistics", statistics);
-            
-            return result;
-            
-        } catch (Exception e) {
-            throw new RuntimeException("获取知识库状态失败: " + e.getMessage(), e);
-        }
-    }
-    
-    /**
-     * 重建主题知识库
-     */
-    public Map<String, Object> rebuildKnowledge(Long themeId) {
-        try {
-            Optional<Theme> themeOpt = themeRepository.findById(themeId);
-            if (themeOpt.isEmpty()) {
-                throw new RuntimeException("主题不存在");
-            }
-            
-            Theme theme = themeOpt.get();
-            
-            // 生成任务ID
-            String taskId = UUID.randomUUID().toString();
-            
-            // 异步执行重建任务
-            new Thread(() -> {
-                try {
-                    // 清空该主题的向量数据
-                    vectorRepository.clearThemeVectors(themeId);
-                    
-                    // 获取该主题下所有已审核的笑话
-                    List<Joke> approvedJokes = jokeRepository.findByThemeIdAndStatus(themeId, Joke.Status.APPROVED);
-                    
-                    // 批量添加到向量数据库
-                    if (!approvedJokes.isEmpty()) {
-                        vectorRepository.addJokes(approvedJokes);
-                    }
-                    
-                    // 这里可以添加任务完成的回调或状态更新逻辑
-                    
-                } catch (Exception e) {
-                    // 记录错误日志
-                    System.err.println("重建知识库失败: " + e.getMessage());
-                }
-            }).start();
-            
-            Map<String, Object> result = new HashMap<>();
-            result.put("taskId", taskId);
-            result.put("themeId", themeId);
-            result.put("status", "PROCESSING");
-            result.put("estimatedTime", "5-10分钟");
-            
-            return result;
-            
-        } catch (Exception e) {
-            throw new RuntimeException("启动重建任务失败: " + e.getMessage(), e);
-        }
-    }
-    
-    /**
-     * 获取知识库重建状态
-     */
-    public Map<String, Object> getRebuildStatus(String taskId) {
-        // 模拟任务状态
-        Map<String, Object> result = new HashMap<>();
-        result.put("taskId", taskId);
-        result.put("status", "COMPLETED");
-        result.put("progress", 100);
-        result.put("startTime", LocalDateTime.now().minusMinutes(5));
-        result.put("endTime", LocalDateTime.now());
-        
-        Map<String, Object> taskResult = new HashMap<>();
-        taskResult.put("processedJokes", 150);
-        taskResult.put("newVersion", "v1.1");
-        result.put("result", taskResult);
-        
-        return result;
-    }
+
     
     /**
      * 获取风格描述

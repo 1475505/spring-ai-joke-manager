@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -12,16 +14,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import com.duduk.jokemanager.entity.Joke;
-import com.duduk.jokemanager.service.LocalEmbeddingService;
 
 @Repository
 public class VectorRepository {
     
-    @Autowired
-    private VectorStore vectorStore;
+    private static final Logger logger = LoggerFactory.getLogger(VectorRepository.class);
     
     @Autowired
-    private LocalEmbeddingService embeddingService;
+    private VectorStore vectorStore;
     
     /**
      * 添加笑话到向量数据库
@@ -31,11 +31,11 @@ public class VectorRepository {
             return;
         }
         
-        // 使用本地嵌入服务生成向量
-        float[] embedding = embeddingService.embed(joke.getContent());
+        // 生成UUID格式的文档ID
+        String documentId = String.format("%08d-0000-0000-0000-000000000000", joke.getId());
         
         Document document = new Document(
-            joke.getId().toString(), // 使用joke ID作为文档ID
+            documentId,
             joke.getContent(),
             Map.of(
                 "id", joke.getId().toString(),
@@ -47,8 +47,6 @@ public class VectorRepository {
             )
         );
         
-        // Spring AI M6版本不再支持直接设置embedding，由VectorStore自动处理
-        
         vectorStore.add(List.of(document));
     }
     
@@ -56,19 +54,14 @@ public class VectorRepository {
      * 批量添加笑话到向量数据库
      */
     public void addJokes(List<Joke> jokes) {
-        List<String> contents = jokes.stream()
-            .filter(joke -> joke.getTheme() != null && joke.getContent() != null)
-            .map(Joke::getContent)
-            .collect(Collectors.toList());
-        
-        // 批量生成向量
-        List<float[]> embeddings = embeddingService.embedBatch(contents);
-        
         List<Document> documents = jokes.stream()
             .filter(joke -> joke.getTheme() != null && joke.getContent() != null)
             .map(joke -> {
+                // 生成UUID格式的文档ID
+                String documentId = String.format("%08d-0000-0000-0000-000000000000", joke.getId());
+                
                 Document doc = new Document(
-                    joke.getId().toString(), // 使用joke ID作为文档ID
+                    documentId,
                     joke.getContent(),
                     Map.of(
                         "id", joke.getId().toString(),
@@ -79,7 +72,6 @@ public class VectorRepository {
                         "is_ai_generated", joke.getIsAiGenerate() != null ? joke.getIsAiGenerate().toString() : "false"
                     )
                 );
-                // Spring AI M6版本不再支持直接设置embedding，由VectorStore自动处理
                 return doc;
             })
             .collect(Collectors.toList());
@@ -93,34 +85,76 @@ public class VectorRepository {
      * 根据内容相似性搜索笑话
      */
     public List<Document> searchSimilarJokes(String content, int topK) {
+        logger.info("开始向量搜索 - 查询内容: '{}', topK: {}", content, topK);
+        
         SearchRequest searchRequest = SearchRequest.builder()
             .query(content)
             .topK(topK)
-            .similarityThreshold(0.7)
+            .similarityThreshold(0.01)  // 设置合适的相似度阈值
             .build();
         
-        return vectorStore.similaritySearch(searchRequest);
+        List<Document> results = vectorStore.similaritySearch(searchRequest);
+        logger.info("向量搜索完成 - 查询内容: '{}', 召回结果数量: {}", content, results.size());
+        
+        // 输出召回结果的相似度分数（降序排列）
+        if (!results.isEmpty()) {
+            logger.info("RAG召回结果相似度分数（降序）:");
+            for (int i = 0; i < results.size(); i++) {
+                Document doc = results.get(i);
+                double score = doc.getScore() != null ? doc.getScore() : 0.0;
+                String jokeId = (String) doc.getMetadata().get("id");
+                String contentPreview = doc.getText().length() > 50 ? doc.getText().substring(0, 50) + "..." : doc.getText();
+                logger.info("  第{}名: ID={}, 相似度分数={}, 内容='{}'", 
+                    i + 1, jokeId, String.format("%.4f", score), contentPreview);
+            }
+        }
+        
+        return results;
     }
     
     /**
      * 根据主题搜索相似笑话
      */
     public List<Document> searchSimilarJokesByTheme(String content, Long themeId, int topK) {
+        logger.info("开始主题向量搜索 - 查询内容: '{}', 主题ID: {}, topK: {}", content, themeId, topK);
+        
         SearchRequest searchRequest = SearchRequest.builder()
             .query(content)
             .topK(topK)
-            .similarityThreshold(0.7)
+            .similarityThreshold(0.01)  // 基于实际测试结果设置阈值，召回相似度>0.01的结果
             .filterExpression("theme_id == '" + themeId + "'")
             .build();
         
-        return vectorStore.similaritySearch(searchRequest);
+        logger.info("向量搜索请求详情 - 查询: '{}', topK: {}, 过滤条件: theme_id == '{}'", content, topK, themeId);
+        
+        List<Document> results = vectorStore.similaritySearch(searchRequest);
+        logger.info("主题向量搜索完成 - 查询内容: '{}', 主题ID: {}, 召回结果数量: {}", content, themeId, results.size());
+        
+        // 输出召回结果的相似度分数（降序排列）
+        logger.info("主题RAG召回结果相似度分数（降序）:");
+        if (!results.isEmpty()) {
+            for (int i = 0; i < results.size(); i++) {
+                Document doc = results.get(i);
+                double score = doc.getScore() != null ? doc.getScore() : 0.0;
+                String jokeId = (String) doc.getMetadata().get("id");
+                String themeIdStr = (String) doc.getMetadata().get("theme_id");
+                String contentPreview = doc.getText().length() > 50 ? doc.getText().substring(0, 50) + "..." : doc.getText();
+                logger.info("  第{}名: ID={}, 主题ID={}, 相似度分数={}, 内容='{}'", 
+                    i + 1, jokeId, themeIdStr, String.format("%.4f", score), contentPreview);
+            }
+        } else {
+            logger.info("  无召回结果");
+        }
+        
+        return results;
     }
     
     /**
      * 删除笑话从向量数据库
      */
     public void deleteJoke(Long jokeId) {
-        vectorStore.delete(List.of(jokeId.toString()));
+        String documentId = String.format("%08d-0000-0000-0000-000000000000", jokeId);
+        vectorStore.delete(List.of(documentId));
     }
     
     /**
@@ -128,7 +162,7 @@ public class VectorRepository {
      */
     public void deleteJokes(List<Long> jokeIds) {
         List<String> ids = jokeIds.stream()
-            .map(Object::toString)
+            .map(id -> String.format("%08d-0000-0000-0000-000000000000", id))
             .collect(Collectors.toList());
         
         vectorStore.delete(ids);
@@ -144,5 +178,19 @@ public class VectorRepository {
         addJoke(joke);
     }
     
-
+    /**
+     * 检查内容是否重复
+     */
+    public boolean isDuplicateContent(String content, Long themeId, double threshold) {
+        List<Document> similarJokes = searchSimilarJokesByTheme(content, themeId, 5);
+        
+        for (Document doc : similarJokes) {
+            // 这里简化处理，实际应该计算相似度分数
+            if (doc.getText().equals(content)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
 }

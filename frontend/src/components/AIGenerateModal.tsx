@@ -184,7 +184,7 @@ const AIGenerateModal: React.FC<AIGenerateModalProps> = ({ visible, onClose, onS
             label="生成提示词"
             rules={[
               { required: true, message: '请输入生成提示词' },
-              { min: 5, message: '提示词至少5个字符' }
+              { min: 1, message: '提示词至少1个字符' }
             ]}
           >
             <TextArea

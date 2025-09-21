@@ -5,10 +5,11 @@ import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.ai.vectorstore.SimpleVectorStore;
+import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @Configuration
 public class AIConfig {
@@ -78,13 +79,15 @@ public class AIConfig {
     }
     
     /**
-     * 配置VectorStore - 暂时使用SimpleVectorStore，因为pgvector扩展未安装
-     * 要启用pgvector，需要：
-     * 1. 在PostgreSQL中安装pgvector扩展：CREATE EXTENSION vector;
-     * 2. 修改下面的配置为PgVectorStore
+     * 配置PgVectorStore - 使用PostgreSQL的pgvector扩展进行向量存储
+     * 支持RAG功能，将笑话内容向量化存储以便进行相似性搜索
+     * 配置为384维向量，匹配本地ONNX嵌入模型
      */
     @Bean
-    public VectorStore vectorStore(EmbeddingModel embeddingModel) {
-        return SimpleVectorStore.builder(embeddingModel).build();
+    public VectorStore vectorStore(EmbeddingModel embeddingModel, JdbcTemplate jdbcTemplate) {
+        return PgVectorStore.builder(jdbcTemplate, embeddingModel)
+                .initializeSchema(true)  // 自动初始化数据库schema
+                .removeExistingVectorStoreTable(true)  // 删除现有表，重新创建
+                .build();
     }
 }

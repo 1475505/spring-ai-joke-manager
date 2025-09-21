@@ -16,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -23,6 +25,8 @@ import java.util.*;
 
 @Service
 public class AIService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(AIService.class);
     
     @Autowired
     private JokeRepository jokeRepository;
@@ -107,8 +111,8 @@ public class AIService {
             joke.setAiScore(score);
             jokeRepository.save(joke);
             
-            // 暂时跳过向量数据库更新，避免UUID格式问题
-            // vectorRepository.updateJoke(joke);
+            // 更新向量数据库
+            vectorRepository.updateJoke(joke);
             
             Map<String, Object> result = new HashMap<>();
             result.put("jokeId", jokeId);
@@ -175,7 +179,7 @@ public class AIService {
     }
     
     /**
-     * AI智能生成笑话
+     * AI智能生成笑话 - 基于RAG的LLM生成
      */
     public Map<String, Object> aiGenerate(Map<String, Object> request) {
         try {
@@ -190,12 +194,10 @@ public class AIService {
                 throw new RuntimeException("无效的themeId类型");
             }
             
-            String apiKey = (String) request.get("apiKey");
             String prompt = (String) request.get("prompt");
+            String apiKey = (String) request.get("apiKey");
             String modelName = (String) request.getOrDefault("modelName", "deepseek-chat");
             String baseUrl = (String) request.getOrDefault("baseUrl", "https://api.deepseek.com");
-            // 固定生成数量为1，不允许修改
-            Integer count = 1;
             
             Optional<Theme> themeOpt = themeRepository.findById(themeId);
             if (themeOpt.isEmpty()) {
@@ -204,112 +206,75 @@ public class AIService {
             
             Theme theme = themeOpt.get();
             
-            // RAG：搜索相似笑话作为参考
-            String ragContext = "";
+            // 记录AI生成请求的关键信息
+            logger.info("AI生成笑话请求 - 主题: {}, 用户提示: {}", theme.getName(), prompt);
+            
+            // RAG：基于Pgvector搜索相似笑话作为参考
+            List<Document> similarJokes = new ArrayList<>();
+            String searchQuery = prompt != null ? prompt : theme.getName();
+            
             try {
-                String searchQuery = prompt != null ? prompt : theme.getName();
-                List<Document> similarJokes = vectorRepository.searchSimilarJokesByTheme(searchQuery, themeId, 3);
-                
-                if (!similarJokes.isEmpty()) {
-                    StringBuilder contextBuilder = new StringBuilder();
-                    contextBuilder.append("参考以下相似笑话的风格和结构：\n");
-                    for (int i = 0; i < similarJokes.size(); i++) {
-                        Document doc = similarJokes.get(i);
-                        contextBuilder.append(String.format("%d. %s\n", i + 1, doc.getText()));
-                    }
-                    contextBuilder.append("\n请基于以上参考内容，创作新的原创笑话，避免重复，保持相似的风格和幽默程度。\n");
-                    ragContext = contextBuilder.toString();
-                }
+                // 优化后的召回数量：增加到8个以提高参考质量
+                similarJokes = vectorRepository.searchSimilarJokesByTheme(searchQuery, themeId, 8);
+                logger.info("RAG召回结果数量: {}", similarJokes.size());
             } catch (Exception e) {
-                // RAG失败时不影响主流程，继续正常生成
-                System.err.println("RAG搜索失败: " + e.getMessage());
+                logger.warn("RAG搜索失败: {}", e.getMessage());
             }
             
-            // 构建生成提示词（包含RAG上下文）
-            String fullPrompt = String.format(
-                "请根据主题'%s'和用户提示'%s'生成%d个笑话。主题说明：%s。%s要求：1. 内容健康正面 2. 语言生动有趣 3. 符合主题特色 4. 长度适中(50-200字)。请返回JSON格式：{\"jokes\": [{\"title\": \"标题\", \"content\": \"内容\"}]}",
-                theme.getName(),
-                prompt != null ? prompt : "搞笑幽默",
-                count,
-                theme.getPrompt() != null ? theme.getPrompt() : "无特殊说明",
-                ragContext
-            );
+            // 构建LLM生成prompt
+            StringBuilder llmPrompt = new StringBuilder();
+            llmPrompt.append(theme.getPrompt() != null ? theme.getPrompt() : theme.getName())
+                    .append("，现在请你基于用户的提示词，生成一个笑话，有笑点。\n\n");
             
-            // 调用AI进行生成
+            llmPrompt.append("以下是一些方法：\n")
+                    .append("- 改编经典文学作品、影视台词的笑话\n")
+                    .append("- 包含游戏内梗和网络梗的内容\n")
+                    .append("- 涉及谐音梗、创新的冷笑话\n\n");
+            
+            // 如果有RAG结果，添加最佳示例
+            if (!similarJokes.isEmpty()) {
+                Document bestMatch = similarJokes.get(0);
+                String referenceContent = bestMatch.getText();
+                llmPrompt.append("以下是一个示例：").append(referenceContent).append("\n\n");
+            }
+            
+            llmPrompt.append("接下来请基于用户的提示词生成，只输出最终的笑话，不要输出其他内容。\n");
+            llmPrompt.append("提示词：").append(prompt != null ? prompt : "无特殊要求");
+
+            logger.info("LLM Prompt: {}", llmPrompt.toString());
+            
+            // 调用LLM生成笑话
             OpenAiChatModel chatModel = aiConfig.createOpenAiChatModel(apiKey, baseUrl, modelName);
-            ChatResponse response = chatModel.call(new Prompt(fullPrompt));
-            String aiResponse = response.getResult().getOutput().getText();
+            ChatResponse response = chatModel.call(new Prompt(llmPrompt.toString()));
+            String generatedContent = response.getResult().getOutput().getText().trim();
             
-            // 解析AI返回的JSON结果
-            String cleanedResponse = aiResponse.trim();
-            // 移除可能的markdown代码块标记
-            if (cleanedResponse.startsWith("```json")) {
-                cleanedResponse = cleanedResponse.substring(7);
+            // 生成标题（简单规则）
+            String generatedTitle = theme.getName() + "笑话";
+            if (prompt != null && !prompt.trim().isEmpty()) {
+                generatedTitle = prompt + "版" + theme.getName() + "笑话";
             }
-            if (cleanedResponse.startsWith("```")) {
-                cleanedResponse = cleanedResponse.substring(3);
-            }
-            if (cleanedResponse.endsWith("```")) {
-                cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length() - 3);
-            }
-            cleanedResponse = cleanedResponse.trim();
             
-            Map<String, Object> aiResult = objectMapper.readValue(cleanedResponse, new TypeReference<Map<String, Object>>() {});
-            @SuppressWarnings("unchecked")
-            List<Map<String, String>> jokes = (List<Map<String, String>>) aiResult.get("jokes");
-            
+            // 构建返回结果
             List<Map<String, Object>> generatedJokes = new ArrayList<>();
+            Map<String, Object> jokeInfo = new HashMap<>();
+            jokeInfo.put("title", generatedTitle);
+            jokeInfo.put("content", generatedContent);
+            jokeInfo.put("isAiGenerated", true);
+            jokeInfo.put("aiScore", 7.5); // 默认评分
+            jokeInfo.put("qualityLevel", "GOOD"); // 默认质量等级
             
-            for (Map<String, String> jokeData : jokes) {
-                String title = jokeData.get("title");
-                String content = jokeData.get("content");
-                
-                // 暂时跳过重复内容检查，避免向量数据库连接问题
-                // if (vectorRepository.isDuplicateContent(content, Long.valueOf(themeId), 0.9)) {
-                //     continue; // 跳过重复内容
-                // }
-                
-                // 只生成笑话数据，不保存到数据库
-                Map<String, Object> jokeInfo = new HashMap<>();
-                jokeInfo.put("title", title);
-                jokeInfo.put("content", content);
-                jokeInfo.put("isAiGenerated", true);
-                // 添加AI评分和质量等级的模拟数据
-                jokeInfo.put("aiScore", 7.5); // 默认评分
-                jokeInfo.put("qualityLevel", "GOOD"); // 默认质量等级
-                
-                generatedJokes.add(jokeInfo);
-            }
+            generatedJokes.add(jokeInfo);
             
             Map<String, Object> result = new HashMap<>();
-            result.put("themeId", themeId);
-            result.put("themeName", theme.getName());
+            result.put("success", true);
             result.put("jokes", generatedJokes);
+            result.put("ragUsed", !similarJokes.isEmpty());
+            result.put("referenceCount", similarJokes.size());
             
             return result;
             
         } catch (Exception e) {
             throw new RuntimeException("AI生成笑话失败: " + e.getMessage(), e);
-        }
-    }
-    
-
-    
-    /**
-     * 获取风格描述
-     */
-    private String getStyleDescription(String style) {
-        switch (style.toLowerCase()) {
-            case "funny":
-                return "幽默搞笑";
-            case "witty":
-                return "机智风趣";
-            case "absurd":
-                return "荒诞无厘头";
-            case "wordplay":
-                return "文字游戏";
-            default:
-                return "幽默搞笑";
         }
     }
 }

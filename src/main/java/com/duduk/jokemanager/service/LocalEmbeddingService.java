@@ -98,6 +98,6 @@ public class LocalEmbeddingService {
             return 0.0f;
         }
         
-        return dotProduct / (float) (Math.sqrt(norm1) * Math.sqrt(norm2));
+        return dotProduct / ((float) Math.sqrt(norm1) * (float) Math.sqrt(norm2));
     }
 }

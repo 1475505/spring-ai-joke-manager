@@ -18,7 +18,6 @@ interface GeneratedJoke {
   title: string;
   content: string;
   aiScore: number;
-  qualityLevel: string;
   isSubmitting?: boolean;
   isSubmitted?: boolean;
 }
@@ -231,9 +230,6 @@ const AIGenerateModal: React.FC<AIGenerateModalProps> = ({ visible, onClose, onS
                       <Text>笑话 {index + 1}</Text>
                       <Text type="secondary" style={{ fontSize: 12 }}>
                         AI评分: {joke.aiScore?.toFixed(1)}
-                      </Text>
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        质量: {joke.qualityLevel}
                       </Text>
                     </Space>
                   }

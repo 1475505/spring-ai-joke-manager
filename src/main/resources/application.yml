@@ -1,5 +1,8 @@
 server:
   port: 8080
+  address: 0.0.0.0
+  servlet:
+    context-path: /
 
 spring:
   application:
@@ -8,62 +11,90 @@ spring:
     ansi:
       enabled: always
   datasource:
-    url: jdbc:h2:file:./target/jokedb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE;MODE=PostgreSQL
-    username: sa
-    password: password
-    driver-class-name: org.h2.Driver
- 
+    url: jdbc:postgresql://localhost:5432/jokedb
+    username: jokedb
+    password: jokedb
+    driver-class-name: org.postgresql.Driver
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     show-sql: true
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
+    defer-datasource-initialization: true
     properties:
       hibernate:
         format_sql: true
         jdbc:
           lob:
             non_contextual_creation: true
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-      settings:
-        web-allow-others: true
-        trace: false
-
   sql:
     init:
       mode: always
-      platform: h2
-      encoding: UTF-8
+      data-locations: classpath:data.sql
+  ai:
+    openai:
+      enabled: true
+      api-key: ${OPENAI_API_KEY:your-api-key-here}
+      base-url: ${OPENAI_API_BASE_URL:https://api.deepseek.com/}
+      chat:
+        options:
+          model: deepseek-chat
+          temperature: 0.7
+      embedding:
+        enabled: false
+    embedding:
+      transformers:
+        enabled: false
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1024
+        initialize-schema: true
+        remove-existing-vector-store-table: true
+  web:
+    cors:
+      allowed-origins: "*"
+      allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+      allowed-headers: "*"
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+
+vector:
+  store:
+    enabled: true
+
+# SiliconFlow Embedding 配置（OpenAI兼容）
+embed:
+  api-key: ${EMBED_API_KEY:}
+  base-url: ${EMBED_API_BASE_URL:https://api.siliconflow.cn}
+  model: ${EMBED_MODEL:BAAI/bge-m3}
+
+# 旧的本地嵌入服务占位（保持维度一致）
+embedding:
+  provider: local
+  dimension: 1024
+  model: paraphrase-multilingual-MiniLM-L12-v2
 
 jwt:
-  secret: your-secret-key-here-make-it-very-long-and-secure
-  expiration: 86400000
-  issuer: joke-manager
+  secret: myVeryLongSecretKeyForJWTTokenGenerationWithAtLeast256Bits
+  expiration: 3600
+  refresh-expiration: 2592000
 
 logging:
   level:
     org.springframework: INFO
     org.springframework.security: INFO
-    com.example.jokemanager: INFO
+    com.duduk.jokemanager: INFO
     org.hibernate.SQL: INFO
     org.hibernate.type.descriptor.sql.BasicBinder: INFO
   pattern:
     console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"
-
-# 嵌入服务配置
-embedding:
-  provider: local  # local 或 openai
-  dimension: 384   # 向量维度
-  model: paraphrase-multilingual-MiniLM-L12-v2  # 本地模型名称
-
-# Spring AI 配置
-  ai:
-    openai:
-      enabled: false  # 默认禁用OpenAI，使用本地嵌入
-    embedding:
-      transformers:
-        enabled: true
-        model: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+  charset:
+    console: UTF-8
+    file: UTF-8

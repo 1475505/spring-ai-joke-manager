@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, Button, message, List, Card, Space, Typography, Popconfirm, Select } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useThemeStore } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
-import { usersAPI } from '../services/api';
+import { usersAPI, knowledgeAPI } from '../services/api';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -43,9 +43,12 @@ const ThemeManagementModal: React.FC<ThemeManagementModalProps> = ({ visible, on
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [permissionModalVisible, setPermissionModalVisible] = useState(false);
+  const [rebuildingThemeId, setRebuildingThemeId] = useState<number | null>(null);
   const [editingTheme, setEditingTheme] = useState<any>(null);
   const [selectedTheme, setSelectedTheme] = useState<any>(null);
   const [users, setUsers] = useState<User[]>([]);
+const [knowledgeStatuses, setKnowledgeStatuses] = useState<Record<number, { knowledged: boolean; last_knowledge_time?: string | null }>>({});
+const formatTime = (s?: string | null) => (s ? s.replace('T', ' ').split('.')[0] : '');
 
   useEffect(() => {
     if (visible) {
@@ -53,6 +56,31 @@ const ThemeManagementModal: React.FC<ThemeManagementModalProps> = ({ visible, on
       loadUsers();
     }
   }, [visible, loadThemes]);
+
+  // 加载每个主题的知识库状态（最简实现：在弹窗打开并加载主题后一次性查询）
+  useEffect(() => {
+    const fetchStatuses = async () => {
+      if (!visible || !themes || themes.length === 0) return;
+      try {
+        const results = await Promise.all(
+          themes.map(async (t: any) => {
+            try {
+              const res = await knowledgeAPI.getStatus(t.id);
+              return [t.id, res.data] as [number, { knowledged: boolean; last_knowledge_time?: string | null }];
+            } catch (e) {
+              return [t.id, { knowledged: false, last_knowledge_time: null }] as [number, { knowledged: boolean; last_knowledge_time?: string | null }];
+            }
+          })
+        );
+        const map: Record<number, { knowledged: boolean; last_knowledge_time?: string | null }> = {};
+        results.forEach(([id, data]) => { map[id] = data; });
+        setKnowledgeStatuses(map);
+      } catch (e) {
+        // 静默失败，保持最简
+      }
+    };
+    fetchStatuses();
+  }, [visible, themes]);
 
   useEffect(() => {
     if (error) {
@@ -133,6 +161,47 @@ const ThemeManagementModal: React.FC<ThemeManagementModalProps> = ({ visible, on
     setPermissionModalVisible(true);
   };
 
+  const handleRebuildVector = async (themeId: number) => {
+    try {
+      setRebuildingThemeId(themeId);
+      
+      // 尝试从localStorage获取embedding配置
+      let embeddingConfig = null;
+      try {
+        const config = localStorage.getItem('embedding_config');
+        if (config) {
+          embeddingConfig = JSON.parse(config);
+        }
+      } catch (error) {
+        console.warn('无法加载embedding配置:', error);
+      }
+      
+      const requestData: any = { themeId };
+      
+      // 如果有embedding配置，添加到请求中
+      if (embeddingConfig && embeddingConfig.apiKey) {
+        requestData.apiKey = embeddingConfig.apiKey;
+        requestData.modelName = embeddingConfig.modelName;
+        requestData.baseUrl = embeddingConfig.baseUrl;
+      }
+      
+      await knowledgeAPI.rebuildVectorStore(requestData);
+      message.success('向量数据库重建成功');
+      // 最简更新：本地标记该主题已创建，并更新最近时间
+      setKnowledgeStatuses(prev => ({
+        ...prev,
+        [themeId]: { knowledged: true, last_knowledge_time: new Date().toISOString() }
+      }));
+    } catch (error: any) {
+      console.error('重建向量数据库失败:', error);
+      message.error(error.message || '重建向量数据库失败');
+    } finally {
+      setRebuildingThemeId(null);
+    }
+  };
+
+  // 直接展示状态，不再使用点击查询
+
   // 检查用户权限
   const canManageThemes = user?.role === 'ROOT' || hasAnyThemeAdminPermission();
   const canManagePermissions = user?.role === 'ROOT' || hasAnyThemeAdminPermission(); // ROOT用户或拥有任何主题admin权限的用户可以管理权限
@@ -193,6 +262,17 @@ const ThemeManagementModal: React.FC<ThemeManagementModalProps> = ({ visible, on
                       编辑
                     </Button>
                   ),
+                  canManageTheme(theme.id) && (
+                    <Button
+                      key="rebuild"
+                      type="text"
+                      icon={<ReloadOutlined />}
+                      loading={rebuildingThemeId === theme.id}
+                      onClick={() => handleRebuildVector(theme.id)}
+                    >
+                      重建向量
+                    </Button>
+                  ),
                   canManageThemePermissions(theme.id) && (
                     <Button
                       key="permission"
@@ -246,6 +326,11 @@ const ThemeManagementModal: React.FC<ThemeManagementModalProps> = ({ visible, on
                         创建者: {theme.createdBy?.username} | 
                         创建时间: {new Date(theme.createdAt).toLocaleString()}
                       </Text>
++                     <br />
++                     <Text type="secondary" style={{ fontSize: 12 }}>
++                       知识库：{knowledgeStatuses[theme.id]?.knowledged ? '已创建' : '未创建'}
++                       {knowledgeStatuses[theme.id]?.knowledged && knowledgeStatuses[theme.id]?.last_knowledge_time ? ` ｜ 最近：${formatTime(knowledgeStatuses[theme.id]?.last_knowledge_time)}` : ''}
++                     </Text>
                     </div>
                   }
                 />

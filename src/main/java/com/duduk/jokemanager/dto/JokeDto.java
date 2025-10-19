@@ -142,16 +142,12 @@ public class JokeDto {
         @Schema(description = "最终评分", example = "8.5")
         private BigDecimal finalScore;
         
-        @Schema(description = "质量等级", example = "GOOD")
-        private String qualityLevel;
-        
         public ScoreInfo() {}
         
-        public ScoreInfo(BigDecimal aiScore, BigDecimal manualScore, BigDecimal finalScore, String qualityLevel) {
+        public ScoreInfo(BigDecimal aiScore, BigDecimal manualScore, BigDecimal finalScore) {
             this.aiScore = aiScore;
             this.manualScore = manualScore;
             this.finalScore = finalScore;
-            this.qualityLevel = qualityLevel;
         }
         
         public BigDecimal getAiScore() { return aiScore; }
@@ -160,8 +156,6 @@ public class JokeDto {
         public void setManualScore(BigDecimal manualScore) { this.manualScore = manualScore; }
         public BigDecimal getFinalScore() { return finalScore; }
         public void setFinalScore(BigDecimal finalScore) { this.finalScore = finalScore; }
-        public String getQualityLevel() { return qualityLevel; }
-        public void setQualityLevel(String qualityLevel) { this.qualityLevel = qualityLevel; }
     }
     
     /**

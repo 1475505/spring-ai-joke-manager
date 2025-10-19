@@ -47,10 +47,6 @@ public class Joke {
     @Column(name = "like_count", nullable = false)
     private Integer likeCount = 0;
     
-    // 相似度检测字段
-    @Column(name = "content_hash", length = 64)
-    private String contentHash;
-    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = true)
     private User createdBy;
@@ -70,11 +66,6 @@ public class Joke {
     // 状态枚举
     public enum Status {
         PENDING, APPROVED, REJECTED, HIDDEN
-    }
-    
-    // 质量等级枚举
-    public enum QualityLevel {
-        EXCELLENT, GOOD, AVERAGE, POOR
     }
     
     // Constructors
@@ -141,21 +132,6 @@ public class Joke {
         return manualScore != null ? manualScore : (aiScore != null ? aiScore : new BigDecimal("7.0"));
     }
     
-    public QualityLevel getQualityLevel() {
-        BigDecimal score = getFinalScore();
-        double scoreValue = score.doubleValue();
-        
-        if (scoreValue >= 9.0) {
-            return QualityLevel.EXCELLENT;
-        } else if (scoreValue >= 8.0) {
-            return QualityLevel.GOOD;
-        } else if (scoreValue >= 7.0) {
-            return QualityLevel.AVERAGE;
-        } else {
-            return QualityLevel.POOR;
-        }
-    }
-    
     public Status getStatus() {
         return status;
     }
@@ -186,14 +162,6 @@ public class Joke {
     
     public void setLikeCount(Integer likeCount) {
         this.likeCount = likeCount;
-    }
-    
-    public String getContentHash() {
-        return contentHash;
-    }
-    
-    public void setContentHash(String contentHash) {
-        this.contentHash = contentHash;
     }
     
     public User getCreatedBy() {

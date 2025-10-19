@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.duduk.jokemanager.dto.ApiResponse;
@@ -48,6 +49,26 @@ public class AIController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> aiGenerate(@RequestBody Map<String, Object> request) {
         Map<String, Object> result = aiService.aiGenerate(request);
         return ResponseEntity.ok(ApiResponse.success(result, "AI生成笑话完成"));
+    }
+
+    /**
+     * 知识库重建（向量重新嵌入）
+     */
+    @PostMapping("/knowledge/rebuild")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> knowledgeRebuild(@RequestBody Map<String, Object> request) {
+        Map<String, Object> result = aiService.knowledgeRebuild(request);
+        return ResponseEntity.ok(ApiResponse.success(result, "重新嵌入向量成功"));
+    }
+
+    /**
+     * 知识库状态查询
+     */
+    @GetMapping("/knowledge/status")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> knowledgeStatus(@RequestParam("themeId") Long themeId) {
+        Map<String, Object> result = aiService.knowledgeStatus(themeId);
+        return ResponseEntity.ok(ApiResponse.success(result, "查询成功"));
     }
     
 

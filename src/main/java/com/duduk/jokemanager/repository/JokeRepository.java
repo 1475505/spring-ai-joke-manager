@@ -88,10 +88,6 @@ public interface JokeRepository extends JpaRepository<Joke, Long> {
     
     Long countByCreatedByAndStatus(User createdBy, Joke.Status status);
     
-    // 相似度检测
-    @Query("SELECT j FROM Joke j WHERE j.theme = :theme AND j.contentHash = :contentHash")
-    List<Joke> findByThemeAndContentHash(@Param("theme") Theme theme, @Param("contentHash") String contentHash);
-    
     // 待审核笑话
     @Query("SELECT j FROM Joke j WHERE j.theme = :theme AND j.status = 'PENDING' ORDER BY j.createdAt ASC")
     Page<Joke> findPendingJokesByTheme(@Param("theme") Theme theme, Pageable pageable);

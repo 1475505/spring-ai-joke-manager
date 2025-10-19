@@ -41,7 +41,9 @@ CREATE TABLE themes (
     icon VARCHAR(50),
     created_by BIGINT NOT NULL REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    knowledged BOOLEAN DEFAULT false,
+    last_knowledge_time TIMESTAMP NULL
 );
 
 -- 笑话表
@@ -56,7 +58,6 @@ CREATE TABLE jokes (
     manual_score DECIMAL(3,1) CHECK (manual_score >= 0 AND manual_score <= 10),
     -- H2不支持GENERATED ALWAYS AS，使用默认值代替
     final_score DECIMAL(3,1),
-    quality_level VARCHAR(20),
     
     -- 状态
     status VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'HIDDEN')),
@@ -65,9 +66,6 @@ CREATE TABLE jokes (
     -- 统计信息
     view_count INTEGER DEFAULT 0,
     like_count INTEGER DEFAULT 0,
-    
-    -- 相似度检测字段
-    content_hash VARCHAR(64), -- 内容哈希，用于快速相似度检测
     
     -- 元数据
     created_by BIGINT REFERENCES users(id),
@@ -124,22 +122,22 @@ INSERT INTO user_theme_permissions (user_id, theme_id, write_permission, admin_p
 
 -- 插入笑话数据
 -- 鸡煲笑话
-INSERT INTO jokes (title, content, theme_id, ai_score, manual_score, final_score, quality_level, status, is_ai_generate, view_count, like_count, content_hash, created_by, updated_by) VALUES
-('机器人的困惑', '机器人问：为什么我总是打不过精英怪？因为你没有升级卡牌啊！机器人：那为什么我升级了还是打不过？因为你没氪金！', 1, 8.5, null, 8.5, 'GOOD', 'APPROVED', false, 156, 23, 'hash1', 1, 1),
-('卡牌的秘密', '为什么卡牌总是不听话？因为它们有自己的想法！什么想法？想被回收换钱...', 1, 7.8, 8.2, 8.2, 'GOOD', 'APPROVED', false, 89, 15, 'hash2', 2, 2),
-('鸡煲的日常', '鸡煲：我每天就是吃吃喝喝睡睡，偶尔被人召唤出来打个架，这是什么神仙生活！', 1, 9.1, null, 9.1, 'EXCELLENT', 'APPROVED', true, 203, 45, 'hash3', 1, 1);
+INSERT INTO jokes (title, content, theme_id, ai_score, manual_score, final_score, status, is_ai_generate, view_count, like_count, created_by, updated_by) VALUES
+('机器人的困惑', '机器人问：为什么我总是打不过精英怪？因为你没有升级卡牌啊！机器人：那为什么我升级了还是打不过？因为你没氪金！', 1, 8.5, null, 8.5, 'APPROVED', false, 156, 23, 1, 1),
+('卡牌的秘密', '为什么卡牌总是不听话？因为它们有自己的想法！什么想法？想被回收换钱...', 1, 7.8, 8.2, 8.2, 'APPROVED', false, 89, 15, 2, 2),
+('鸡煲的日常', '鸡煲：我每天就是吃吃喝喝睡睡，偶尔被人召唤出来打个架，这是什么神仙生活！', 1, 9.1, null, 9.1, 'APPROVED', true, 203, 45, 1, 1);
 
 -- 赛诺笑话
-INSERT INTO jokes (title, content, theme_id, ai_score, manual_score, final_score, quality_level, status, is_ai_generate, view_count, like_count, content_hash, created_by, updated_by) VALUES
-('赛诺的冷笑话', '赛诺：为什么雷电将军总是面无表情？因为她害怕笑起来会漏电！', 2, 8.0, 8.5, 8.5, 'GOOD', 'APPROVED', false, 234, 56, 'hash4', 2, 2),
-('旅行者的疑问', '旅行者：赛诺，你的笑话为什么这么冷？赛诺：因为我是雷系的，天生自带冰属性buff！', 2, 7.5, null, 7.5, 'AVERAGE', 'APPROVED', false, 167, 28, 'hash5', 3, 3),
-('沙漠探险', '赛诺在沙漠里迷路了，别人问他怎么办？他说：没关系，我自带GPS！什么GPS？Great Pun System（绝佳冷笑话系统）！', 2, 9.2, null, 9.2, 'EXCELLENT', 'APPROVED', true, 189, 67, 'hash6', 1, 1);
+INSERT INTO jokes (title, content, theme_id, ai_score, manual_score, final_score, status, is_ai_generate, view_count, like_count, created_by, updated_by) VALUES
+('赛诺的冷笑话', '赛诺：为什么雷电将军总是面无表情？因为她害怕笑起来会漏电！', 2, 8.0, 8.5, 8.5, 'APPROVED', false, 234, 56, 2, 2),
+('旅行者的疑问', '旅行者：赛诺，你的笑话为什么这么冷？赛诺：因为我是雷系的，天生自带冰属性buff！', 2, 7.5, null, 7.5, 'APPROVED', false, 167, 28, 3, 3),
+('沙漠探险', '赛诺在沙漠里迷路了，别人问他怎么办？他说：没关系，我自带GPS！什么GPS？Great Pun System（绝佳冷笑话系统）！', 2, 9.2, null, 9.2, 'APPROVED', true, 189, 67, 1, 1);
 
 -- 字节蹲坑笑话
-INSERT INTO jokes (title, content, theme_id, ai_score, manual_score, final_score, quality_level, status, is_ai_generate, view_count, like_count, content_hash, created_by, updated_by) VALUES
-('程序员的日常', '为什么程序员总是熬夜？因为bug在夜里更活跃！什么时候最活跃？在你准备下班的那一刻！', 3, 8.8, null, 8.8, 'GOOD', 'APPROVED', false, 445, 89, 'hash7', 2, 2),
-('产品经理的需求', '产品经理：这个需求很简单，就是把大象装进冰箱。程序员：好的，需要多大的冰箱？产品经理：不要冰箱，直接装！', 3, 9.5, 9.0, 9.0, 'EXCELLENT', 'APPROVED', false, 678, 134, 'hash8', 3, 3),
-('字节的福报', '在字节工作是什么体验？996是福报，007是常态，555是梦想（5点起床，5点睡觉，5天不回家）！', 3, 7.2, 8.0, 8.0, 'GOOD', 'APPROVED', false, 567, 78, 'hash9', 1, 1);
+INSERT INTO jokes (title, content, theme_id, ai_score, manual_score, final_score, status, is_ai_generate, view_count, like_count, created_by, updated_by) VALUES
+('程序员的日常', '为什么程序员总是熬夜？因为bug在夜里更活跃！什么时候最活跃？在你准备下班的那一刻！', 3, 8.8, null, 8.8, 'APPROVED', false, 445, 89, 2, 2),
+('产品经理的需求', '产品经理：这个需求很简单，就是把大象装进冰箱。程序员：好的，需要多大的冰箱？产品经理：不要冰箱，直接装！', 3, 9.5, 9.0, 9.0, 'APPROVED', false, 678, 134, 3, 3),
+('字节的福报', '在字节工作是什么体验？996是福报，007是常态，555是梦想（5点起床，5点睡觉，5天不回家）！', 3, 7.2, 8.0, 8.0, 'APPROVED', false, 567, 78, 1, 1);
 
 -- 插入评论数据（包含主题级和笑话级评论）
 -- 主题级评论

@@ -7,10 +7,16 @@ import com.duduk.jokemanager.entity.User;
 import com.duduk.jokemanager.repository.JokeRepository;
 import com.duduk.jokemanager.repository.ThemeRepository;
 import com.duduk.jokemanager.repository.UserRepository;
-import com.duduk.jokemanager.repository.VectorRepository;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.document.Document;
+// 移除 Metadata.from 的使用，避免不兼容 API
+// import org.springframework.ai.document.Metadata;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
+// 移除 DeleteRequest 使用，回退到字符串过滤删除
+// import org.springframework.ai.vectorstore.DeleteRequest;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,10 +47,13 @@ public class AIService {
     private JokeService jokeService;
     
     @Autowired
-    private VectorRepository vectorRepository;
-    
-    @Autowired
     private AIConfig aiConfig;
+
+    @Autowired(required = false)
+    private EmbeddingModel embeddingModel; // SiliconFlow Embedding
+
+    @Autowired(required = false)
+    private VectorStore vectorStore; // PgVectorStore 注入
     
     private final ObjectMapper objectMapper = new ObjectMapper();
     
@@ -95,10 +104,10 @@ public class AIService {
             if (cleanedResponse.startsWith("```json")) {
                 cleanedResponse = cleanedResponse.substring(7);
             }
-            if (cleanedResponse.startsWith("```")) {
+            if (cleanedResponse.startsWith("```") ) {
                 cleanedResponse = cleanedResponse.substring(3);
             }
-            if (cleanedResponse.endsWith("```")) {
+            if (cleanedResponse.endsWith("```") ) {
                 cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length() - 3);
             }
             cleanedResponse = cleanedResponse.trim();
@@ -110,9 +119,6 @@ public class AIService {
             // 保存评分结果
             joke.setAiScore(score);
             jokeRepository.save(joke);
-            
-            // 更新向量数据库
-            vectorRepository.updateJoke(joke);
             
             Map<String, Object> result = new HashMap<>();
             result.put("jokeId", jokeId);
@@ -193,88 +199,139 @@ public class AIService {
             } else {
                 throw new RuntimeException("无效的themeId类型");
             }
-            
             String prompt = (String) request.get("prompt");
             String apiKey = (String) request.get("apiKey");
             String modelName = (String) request.getOrDefault("modelName", "deepseek-chat");
             String baseUrl = (String) request.getOrDefault("baseUrl", "https://api.deepseek.com");
-            
             Optional<Theme> themeOpt = themeRepository.findById(themeId);
             if (themeOpt.isEmpty()) {
                 throw new RuntimeException("主题不存在");
             }
-            
             Theme theme = themeOpt.get();
-            
-            // 记录AI生成请求的关键信息
             logger.info("AI生成笑话请求 - 主题: {}, 用户提示: {}", theme.getName(), prompt);
-            
             // RAG：基于Pgvector搜索相似笑话作为参考
             List<Document> similarJokes = new ArrayList<>();
             String searchQuery = prompt != null ? prompt : theme.getName();
-            
             try {
-                // 优化后的召回数量：增加到8个以提高参考质量
-                similarJokes = vectorRepository.searchSimilarJokesByTheme(searchQuery, themeId, 8);
+                if (vectorStore != null) {
+                    SearchRequest searchRequest = SearchRequest.builder()
+                            .query(searchQuery)
+                            .topK(3)
+                            .similarityThreshold(0.70)
+                            .filterExpression("themeId == '" + theme.getId() + "' && status == 'APPROVED'")
+                            .build();
+                    similarJokes = vectorStore.similaritySearch(searchRequest);
+                } else {
+                    similarJokes = new ArrayList<>();
+                }
                 logger.info("RAG召回结果数量: {}", similarJokes.size());
             } catch (Exception e) {
                 logger.warn("RAG搜索失败: {}", e.getMessage());
             }
-            
-            // 构建LLM生成prompt
             StringBuilder llmPrompt = new StringBuilder();
             llmPrompt.append(theme.getPrompt() != null ? theme.getPrompt() : theme.getName())
                     .append("，现在请你基于用户的提示词，生成一个笑话，有笑点。\n\n");
-            
             llmPrompt.append("以下是一些方法：\n")
                     .append("- 改编经典文学作品、影视台词的笑话\n")
                     .append("- 包含游戏内梗和网络梗的内容\n")
                     .append("- 涉及谐音梗、创新的冷笑话\n\n");
-            
-            // 如果有RAG结果，添加最佳示例
             if (!similarJokes.isEmpty()) {
                 Document bestMatch = similarJokes.get(0);
                 String referenceContent = bestMatch.getText();
                 llmPrompt.append("以下是一个示例：").append(referenceContent).append("\n\n");
             }
-            
             llmPrompt.append("接下来请基于用户的提示词生成，只输出最终的笑话，不要输出其他内容。\n");
             llmPrompt.append("提示词：").append(prompt != null ? prompt : "无特殊要求");
-
             logger.info("LLM Prompt: {}", llmPrompt.toString());
-            
-            // 调用LLM生成笑话
             OpenAiChatModel chatModel = aiConfig.createOpenAiChatModel(apiKey, baseUrl, modelName);
             ChatResponse response = chatModel.call(new Prompt(llmPrompt.toString()));
             String generatedContent = response.getResult().getOutput().getText().trim();
-            
-            // 生成标题（简单规则）
             String generatedTitle = theme.getName() + "笑话";
             if (prompt != null && !prompt.trim().isEmpty()) {
                 generatedTitle = prompt + "版" + theme.getName() + "笑话";
             }
-            
-            // 构建返回结果
             List<Map<String, Object>> generatedJokes = new ArrayList<>();
             Map<String, Object> jokeInfo = new HashMap<>();
             jokeInfo.put("title", generatedTitle);
             jokeInfo.put("content", generatedContent);
             jokeInfo.put("isAiGenerated", true);
-            jokeInfo.put("aiScore", 7.5); // 默认评分
-            jokeInfo.put("qualityLevel", "GOOD"); // 默认质量等级
-            
+            jokeInfo.put("aiScore", 7.5);
             generatedJokes.add(jokeInfo);
-            
             Map<String, Object> result = new HashMap<>();
             result.put("success", true);
             result.put("jokes", generatedJokes);
             result.put("ragUsed", !similarJokes.isEmpty());
             result.put("referenceCount", similarJokes.size());
-            
             return result;
-            
         } catch (Exception e) {
             throw new RuntimeException("AI生成笑话失败: " + e.getMessage(), e);
+        }
+    }
+
+    public Map<String, Object> knowledgeRebuild(Map<String, Object> request) {
+        try {
+            Object themeIdObj = request.get("themeId");
+            Long themeId;
+            if (themeIdObj instanceof Integer) {
+                themeId = ((Integer) themeIdObj).longValue();
+            } else if (themeIdObj instanceof String) {
+                themeId = Long.valueOf((String) themeIdObj);
+            } else if (themeIdObj instanceof Long) {
+                themeId = (Long) themeIdObj;
+            } else {
+                throw new RuntimeException("无效的themeId类型");
+            }
+            Optional<Theme> themeOpt = themeRepository.findById(themeId);
+            if (themeOpt.isEmpty()) {
+                throw new RuntimeException("主题不存在");
+            }
+            Theme theme = themeOpt.get();
+            if (vectorStore == null || embeddingModel == null) {
+                throw new IllegalStateException("向量存储或嵌入模型未配置");
+            }
+            try {
+                vectorStore.delete("themeId == '" + theme.getId() + "'");
+            } catch (Exception e) {
+                logger.warn("删除旧向量失败: {}", e.getMessage());
+            }
+            List<Joke> approved = jokeRepository.findByThemeAndStatus(theme, Joke.Status.APPROVED);
+            List<Document> docs = new ArrayList<>();
+            for (Joke j : approved) {
+                Map<String, Object> meta = new HashMap<>();
+                meta.put("themeId", String.valueOf(theme.getId()));
+                meta.put("status", j.getStatus().name());
+                meta.put("jokeId", String.valueOf(j.getId()));
+                meta.put("title", j.getTitle());
+                Document d = new Document(j.getContent(), meta);
+                docs.add(d);
+            }
+            vectorStore.add(docs);
+            theme.setKnowledged(true);
+            theme.setLastKnowledgeTime(LocalDateTime.now());
+            themeRepository.save(theme);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("count", approved.size());
+            result.put("themeId", theme.getId());
+            return result;
+        } catch (Exception e) {
+            throw new RuntimeException("重新嵌入向量失败: " + e.getMessage(), e);
+        }
+    }
+
+    public Map<String, Object> knowledgeStatus(Long themeId) {
+        try {
+            Optional<Theme> themeOpt = themeRepository.findById(themeId);
+            if (themeOpt.isEmpty()) {
+                throw new RuntimeException("主题不存在");
+            }
+            Theme theme = themeOpt.get();
+            Map<String, Object> result = new HashMap<>();
+            result.put("knowledged", theme.getKnowledged());
+            result.put("last_knowledge_time", theme.getLastKnowledgeTime());
+            return result;
+        } catch (Exception e) {
+            throw new RuntimeException("查询知识库状态失败: " + e.getMessage(), e);
         }
     }
 }

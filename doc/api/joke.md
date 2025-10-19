@@ -41,8 +41,7 @@ GET /jokes?themeId=uuid&page=0&size=10&sort=finalScore&order=desc&status=APPROVE
         "scores": {
           "aiScore": 8.2,
           "manualScore": 8.5,
-          "finalScore": 8.5,
-          "qualityLevel": "GOOD"
+          "finalScore": 8.5
         },
         "statistics": {
           "viewCount": 150,
@@ -85,8 +84,7 @@ GET /jokes/{jokeId}
     "scores": {
       "aiScore": 8.2,
       "manualScore": 8.5,
-      "finalScore": 8.5,
-      "qualityLevel": "GOOD"
+      "finalScore": 8.5
     },
     "statistics": {
       "viewCount": 150,

@@ -776,8 +776,7 @@ public class JokeController {
         JokeDto.ScoreInfo scoreInfo = new JokeDto.ScoreInfo(
                 joke.getAiScore(),
                 joke.getManualScore(),
-                joke.getFinalScore(),
-                joke.getQualityLevel().name()
+                joke.getFinalScore()
         );
         
         JokeDto.StatisticsInfo statisticsInfo = new JokeDto.StatisticsInfo(

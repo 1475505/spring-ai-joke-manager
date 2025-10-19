@@ -39,15 +39,7 @@ CREATE TABLE jokes (
     manual_score DECIMAL(3,1) CHECK (manual_score >= 0 AND manual_score <= 10),
     final_score DECIMAL(3,1) GENERATED ALWAYS AS (
         COALESCE(manual_score, ai_score, 7.0)
-    ) STORED, -- 计算列：优先人工评分，其次AI评分，默认7.0
-    quality_level VARCHAR(20) GENERATED ALWAYS AS (
-        CASE 
-            WHEN COALESCE(manual_score, ai_score, 7.0) >= 9.0 THEN 'EXCELLENT'
-            WHEN COALESCE(manual_score, ai_score, 7.0) >= 8.0 THEN 'GOOD'
-            WHEN COALESCE(manual_score, ai_score, 7.0) >= 7.0 THEN 'AVERAGE'
-            ELSE 'POOR'
-        END
-    ) STORED, -- 质量等级计算列
+    ) STORED, -- 计算列：优先人工评分，其次AI评分，默认7.0    ) STORED, -- 质量等级计算列
     
     -- 状态
     status VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'HIDDEN')),
@@ -83,20 +75,6 @@ CREATE TABLE comments (
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-
--- 知识库配置表【一期暂不实现】
-CREATE TABLE knowledge_base_config (
-    id BIGINT PRIMARY KEY,
-    theme_id BIGINT NOT NULL REFERENCES themes(id) ON DELETE CASCADE,
-    min_score_threshold DECIMAL(3,1) DEFAULT 8.0,
-    max_jokes_count INTEGER DEFAULT 100,
-    auto_update_enabled BOOLEAN DEFAULT true,
-    last_updated_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(theme_id)
-);
 ```
 
 ## 测试数据示例
@@ -117,9 +95,9 @@ INSERT INTO themes (id, name, prompt, icon, created_by) VALUES
 (3, '字节蹲坑笑话', '生成关于字节跳动公司程序员日常工作的搞笑段子，包含加班、产品需求、技术问题等职场元素', '💻', 1);
 
 -- 示例：笑话数据
-INSERT INTO jokes (id, title, content, theme_id, ai_score, final_score, quality_level, status, created_by, updated_by) VALUES
-(1, '机器人的困惑', '机器人问：为什么我总是打不过精英怪？因为你没有升级卡牌啊！', 1, 8.5, 8.5, 'GOOD', 'APPROVED', 1, 1),
-(2, '赛诺的冷笑话', '赛诺：为什么雷电将军总是面无表情？因为她害怕笑起来会漏电！', 2, 8.0, 8.0, 'GOOD', 'APPROVED', 2, 2);
+INSERT INTO jokes (id, title, content, theme_id, ai_score, final_score, status, created_by, updated_by) VALUES
+(1, '机器人的困惑', '机器人问：为什么我总是打不过精英怪？因为你没有升级卡牌啊！', 1, 8.5, 8.5, 'APPROVED', 1, 1),
+(2, '赛诺的冷笑话', '赛诺：为什么雷电将军总是面无表情？因为她害怕笑起来会漏电！', 2, 8.0, 8.0, 'APPROVED', 2, 2);
 ```
 
 ## 权限说明

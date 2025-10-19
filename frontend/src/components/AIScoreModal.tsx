@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Button, message, Select, InputNumber, Space, Card, Typography, Spin, Divider } from 'antd';
-import { RobotOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Modal, Form, Button, message, Space, Card, Typography, Spin, Divider } from 'antd';
+import { RobotOutlined } from '@ant-design/icons';
 import { aiAPI, jokesAPI } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 
 const { Text, Title } = Typography;
-const { Option } = Select;
+// 移除不必要的 Option 解构，使用 options API 或直接 Select 组件
+// const { Option } = Select;
 
 interface Joke {
   id: number;
@@ -20,7 +21,6 @@ interface Joke {
     aiScore: number;
     manualScore: number | null;
     finalScore: number;
-    qualityLevel: string;
   };
   statistics: {
     viewCount: number;
@@ -48,8 +48,7 @@ const AIScoreModal: React.FC<AIScoreModalProps> = ({ visible, onClose, onSuccess
   const { user, hasPermission } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [jokes, setJokes] = useState<Joke[]>([]);
-  const [selectedJokes, setSelectedJokes] = useState<number[]>([]);
-  const [batchCount, setBatchCount] = useState(5);
+  // 批量评分功能已移除
   const [form] = Form.useForm();
 
   // 检查权限
@@ -141,49 +140,9 @@ const AIScoreModal: React.FC<AIScoreModalProps> = ({ visible, onClose, onSuccess
     }
   };
 
-  // 批量评分
-  const handleBatchScore = async () => {
-    const config = getOpenAIConfig();
-    if (!config) {
-      message.error('请先在右上角配置OpenAI设置');
-      return;
-    }
-
-    if (!canUseAIScore) {
-      message.error('权限不足，只有主题管理员可以使用AI评分');
-      return;
-    }
-
-    if (selectedJokes.length === 0) {
-      message.error('请选择要评分的笑话');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await aiAPI.batchScoreJokes({
-        jokeIds: selectedJokes,
-        apiKey: config.apiKey,
-        modelName: config.model,
-        baseUrl: config.baseUrl
-      });
-      message.success(`批量AI评分完成，共评分 ${selectedJokes.length} 个笑话`);
-      setSelectedJokes([]);
-      loadJokes(); // 重新加载笑话列表
-      onSuccess?.();
-    } catch (error) {
-      message.error('批量AI评分失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 批量选择最新的N个笑话
-  const handleSelectLatest = () => {
-    const latestJokes = jokes.slice(0, batchCount).map(joke => joke.id);
-    setSelectedJokes(latestJokes);
-    message.success(`已选择最新的 ${latestJokes.length} 个笑话`);
-  };
+  // 批量评分功能已移除
+  // const handleBatchScore = async () => {};
+  // const handleSelectLatest = () => {};
 
   if (!canUseAIScore) {
     return (
@@ -230,30 +189,7 @@ const AIScoreModal: React.FC<AIScoreModalProps> = ({ visible, onClose, onSuccess
           <Text type="secondary"> {config.model} @ {config.baseUrl}</Text>
         </div>
 
-        <Divider>批量操作</Divider>
-        
-        <Space style={{ marginBottom: 16 }}>
-          <Text>选择最新的</Text>
-          <InputNumber
-            min={1}
-            max={20}
-            value={batchCount}
-            onChange={(value) => setBatchCount(value || 5)}
-            style={{ width: 80 }}
-          />
-          <Text>个笑话</Text>
-          <Button onClick={handleSelectLatest}>
-            选择
-          </Button>
-          <Button 
-            type="primary" 
-            icon={<ThunderboltOutlined />}
-            onClick={handleBatchScore}
-            disabled={selectedJokes.length === 0}
-          >
-            批量AI评分 ({selectedJokes.length})
-          </Button>
-        </Space>
+        {/* 批量操作功能已移除 */}
 
         <Divider>笑话列表</Divider>
 
@@ -286,19 +222,6 @@ const AIScoreModal: React.FC<AIScoreModalProps> = ({ visible, onClose, onSuccess
                     onClick={() => handleSingleScore(joke.id)}
                   >
                     AI评分
-                  </Button>
-                  <Button
-                    size="small"
-                    type={selectedJokes.includes(joke.id) ? 'primary' : 'default'}
-                    onClick={() => {
-                      if (selectedJokes.includes(joke.id)) {
-                        setSelectedJokes(prev => prev.filter(id => id !== joke.id));
-                      } else {
-                        setSelectedJokes(prev => [...prev, joke.id]);
-                      }
-                    }}
-                  >
-                    {selectedJokes.includes(joke.id) ? '已选择' : '选择'}
                   </Button>
                 </Space>
               </div>

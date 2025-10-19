@@ -49,6 +49,12 @@ public class Theme {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
+    @Column(name = "knowledged")
+    private Boolean knowledged;
+    
+    @Column(name = "last_knowledge_time")
+    private LocalDateTime lastKnowledgeTime;
+    
     // Constructors
     public Theme() {}
     
@@ -145,4 +151,9 @@ public class Theme {
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
+    
+    public Boolean getKnowledged() { return knowledged != null ? knowledged : false; }
+    public void setKnowledged(Boolean knowledged) { this.knowledged = knowledged; }
+    public LocalDateTime getLastKnowledgeTime() { return lastKnowledgeTime; }
+    public void setLastKnowledgeTime(LocalDateTime lastKnowledgeTime) { this.lastKnowledgeTime = lastKnowledgeTime; }
 }

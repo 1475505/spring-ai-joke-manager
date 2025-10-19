@@ -22,7 +22,6 @@ interface Joke {
     aiScore: number;
     manualScore: number | null;
     finalScore: number;
-    qualityLevel: string;
   };
   statistics: {
     viewCount: number;
@@ -300,7 +299,6 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
               direction={isMobile ? 'vertical' : 'horizontal'}
               style={{ width: '100%' }}
             >
-              <span>主题: {joke.theme.name}</span>
               <span>创建者: {joke.author?.username || '系统'}</span>
               <span>{new Date(joke.createdAt).toLocaleDateString()}</span>
               {showStatus && (
@@ -337,11 +335,11 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
          }}>
           {/* 第一行：无需登录都有的按钮 */}
           <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-around', 
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
             alignItems: 'center',
             marginBottom: '6px',
-            flexWrap: 'nowrap'
+            gap: isMobile ? '4px' : '8px'
           }}>
             <Button
               type="text"
@@ -349,11 +347,7 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
               onClick={handleLike}
               size={isMobile ? 'small' : 'middle'}
               loading={loading}
-              style={{ 
-                minWidth: isMobile ? '60px' : '80px',
-                fontSize: isMobile ? '12px' : '14px',
-                padding: isMobile ? '2px 6px' : '4px 8px'
-              }}
+              style={{ width: '100%' }}
             >
               {isMobile ? likeCount : `点赞 ${likeCount}`}
             </Button>
@@ -362,11 +356,7 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
               icon={<CommentOutlined />}
               onClick={() => setCommentsVisible(!commentsVisible)}
               size={isMobile ? 'small' : 'middle'}
-              style={{ 
-                minWidth: isMobile ? '60px' : '80px',
-                fontSize: isMobile ? '12px' : '14px',
-                padding: isMobile ? '2px 6px' : '4px 8px'
-              }}
+              style={{ width: '100%' }}
             >
               {isMobile ? '评论' : (commentsVisible ? '收起评论' : '评论')}
             </Button>
@@ -376,11 +366,7 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
               onClick={handleAIScore}
               loading={aiScoreLoading}
               size={isMobile ? 'small' : 'middle'}
-              style={{ 
-                minWidth: isMobile ? '60px' : '80px',
-                fontSize: isMobile ? '12px' : '14px',
-                padding: isMobile ? '2px 6px' : '4px 8px'
-              }}
+              style={{ width: '100%' }}
             >
               {isMobile ? 'AI' : 'AI评分'}
             </Button>
@@ -389,11 +375,10 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
           {/* 第二行：仅有admin权限才出现的按钮 */}
           {user && (hasPermission('score', joke.theme.id) || hasPermission('write', joke.theme.id)) && (
             <div style={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
               alignItems: 'center',
-              gap: isMobile ? '4px' : '8px',
-              flexWrap: 'nowrap'
+              gap: isMobile ? '4px' : '8px'
             }}>
               {user && hasPermission('score', joke.theme.id) && (
                 <Button
@@ -401,11 +386,7 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
                   icon={<StarOutlined />}
                   onClick={() => setScoreModalVisible(true)}
                   size={isMobile ? 'small' : 'middle'}
-                  style={{ 
-                    minWidth: isMobile ? '50px' : '70px',
-                    fontSize: isMobile ? '12px' : '14px',
-                    padding: isMobile ? '2px 4px' : '4px 6px'
-                  }}
+                  style={{ width: '100%' }}
                 >
                   {isMobile ? '评分' : '评分'}
                 </Button>
@@ -422,11 +403,7 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
                     setEditModalVisible(true);
                   }}
                   size={isMobile ? 'small' : 'middle'}
-                  style={{ 
-                    minWidth: isMobile ? '50px' : '70px',
-                    fontSize: isMobile ? '12px' : '14px',
-                    padding: isMobile ? '2px 4px' : '4px 6px'
-                  }}
+                  style={{ width: '100%' }}
                 >
                   {isMobile ? '编辑' : '编辑'}
                 </Button>
@@ -437,11 +414,7 @@ const JokeCard: React.FC<JokeCardProps> = ({ joke, onUpdate, showStatus = false 
                   icon={<SettingOutlined />}
                   onClick={() => setStatusModalVisible(true)}
                   size={isMobile ? 'small' : 'middle'}
-                  style={{ 
-                    minWidth: isMobile ? '50px' : '70px',
-                    fontSize: isMobile ? '12px' : '14px',
-                    padding: isMobile ? '2px 4px' : '4px 6px'
-                  }}
+                  style={{ width: '100%' }}
                 >
                   {isMobile ? '管理' : '状态管理'}
                 </Button>

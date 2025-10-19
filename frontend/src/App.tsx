@@ -18,7 +18,8 @@ import './App.css';
 
 const { Header, Content, Sider } = Layout;
 const { Title } = Typography;
-const { Option } = Select;
+// 移除不再使用的 Option 解构
+// const { Option } = Select;
 const { Search } = Input;
 const { useBreakpoint } = Grid;
 
@@ -35,7 +36,6 @@ interface Joke {
     aiScore: number;
     manualScore: number | null;
     finalScore: number;
-    qualityLevel: string;
   };
   statistics: {
     viewCount: number;
@@ -186,11 +186,12 @@ function App() {
           onChange={setSortBy}
           style={{ width: 120 }}
           size={isMobile ? 'small' : 'middle'}
-        >
-          <Option value="created">最新</Option>
-          <Option value="score">评分</Option>
-          <Option value="likes">赞数</Option>
-        </Select>
+          options={[
+            { value: 'created', label: '最新' },
+            { value: 'score', label: '评分' },
+            { value: 'likes', label: '赞数' }
+          ]}
+        />
 
         {isLoggedIn && (
           <Select
@@ -198,26 +199,28 @@ function App() {
             onChange={(value) => setShowMyJokes(value === 'my')}
             style={{ width: 120 }}
             size={isMobile ? 'small' : 'middle'}
-          >
-            <Option value="all">全部笑话</Option>
-            <Option value="my">我的投稿</Option>
-          </Select>
+            options={[
+              { value: 'all', label: '全部笑话' },
+              { value: 'my', label: '我的投稿' }
+            ]}
+          />
         )}
 
-        {isLoggedIn && hasPermission('write', currentThemeId || undefined) && (
+        {isLoggedIn && hasPermission('write', currentThemeId ?? undefined) && (
           <Select
             value={statusFilter}
             onChange={setStatusFilter}
             style={{ width: 120 }}
             size={isMobile ? 'small' : 'middle'}
             placeholder="状态筛选"
-          >
-            <Option value="">全部状态</Option>
-            <Option value="PENDING">审核中</Option>
-            <Option value="APPROVED">已通过</Option>
-            <Option value="REJECTED">已拒绝</Option>
-            <Option value="HIDDEN">已隐藏</Option>
-          </Select>
+            options={[
+              { value: '', label: '全部状态' },
+              { value: 'PENDING', label: '审核中' },
+              { value: 'APPROVED', label: '已通过' },
+              { value: 'REJECTED', label: '已拒绝' },
+              { value: 'HIDDEN', label: '已隐藏' }
+            ]}
+          />
         )}
 
         <Search
@@ -258,7 +261,7 @@ function App() {
         </Button>
         
         {/* 需要权限校验的按钮 */}
-        {hasPermission('write', currentThemeId || undefined) && (
+        {hasPermission('write', currentThemeId ?? undefined) && (
           <Button
             icon={<AuditOutlined />}
             onClick={() => setAdminPanelVisible(true)}
@@ -403,7 +406,7 @@ function App() {
                         key={joke.id} 
                         joke={joke} 
                         onUpdate={loadJokes} 
-                        showStatus={showMyJokes || hasPermission('write', currentThemeId || undefined)} 
+                        showStatus={showMyJokes || hasPermission('write', currentThemeId ?? undefined)} 
                       />
                     ))}
                   </div>
@@ -560,7 +563,7 @@ function App() {
           setAiGenerateModalVisible(false);
           loadJokes();
         }}
-        themeId={currentThemeId}
+        themeId={currentThemeId ?? undefined}
       />
 
     </Layout>

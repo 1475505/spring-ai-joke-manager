@@ -105,12 +105,9 @@ public class JokeService {
         Theme theme = themeOpt.get();
         Joke joke = new Joke(title, content, theme, createdBy);
         
-        // 生成内容哈希用于相似度检测
-        joke.setContentHash(generateContentHash(content));
-        
         return jokeRepository.save(joke);
     }
-    
+
     /**
      * 创建笑话（匿名用户）
      */
@@ -123,12 +120,9 @@ public class JokeService {
         Theme theme = themeOpt.get();
         Joke joke = new Joke(title, content, theme, null); // 匿名用户传null
         
-        // 生成内容哈希用于相似度检测
-        joke.setContentHash(generateContentHash(content));
-        
         return jokeRepository.save(joke);
     }
-    
+
     /**
      * 更新笑话
      */
@@ -145,7 +139,6 @@ public class JokeService {
         }
         if (content != null) {
             joke.setContent(content);
-            joke.setContentHash(generateContentHash(content));
         }
         joke.setUpdatedBy(updatedBy);
         
@@ -280,23 +273,6 @@ public class JokeService {
         // 只获取同主题下状态为APPROVED的笑话进行相似度比较
         List<Joke> approvedJokesInTheme = jokeRepository.findByThemeAndStatus(themeOpt.get(), Joke.Status.APPROVED);
         return approvedJokesInTheme;
-    }
-    
-    /**
-     * 生成内容哈希
-     */
-    private String generateContentHash(String content) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] hash = md.digest(content.trim().toLowerCase().getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            throw new RuntimeException("生成内容哈希失败", e);
-        }
     }
     
     /**

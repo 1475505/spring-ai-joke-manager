@@ -332,15 +332,7 @@ export const aiAPI = {
     baseUrl: string;
   }) => api.post('/ai/score', data),
 
-  // AI批量评分笑话
-  batchScore: (data: {
-    themeId: number;
-    apiKey: string;
-    modelName: string;
-    baseUrl: string;
-  }) => api.post('/ai/batch-score', data),
-
-  // AI生成笑话
+  // 保留旧的 generate 接口
   generateJokes: (data: {
     themeId: number;
     prompt: string;
@@ -349,4 +341,22 @@ export const aiAPI = {
     modelName: string;
     baseUrl: string;
   }) => api.post('/ai/generate', data),
+};
+
+// Knowledge API
+export const knowledgeAPI = {
+  // 重建向量数据库
+  rebuildVectorStore: (data: {
+    themeId: number;
+    apiKey?: string;
+    modelName?: string;
+    baseUrl?: string;
+  }) => api.post('/knowledge/rebuild', data),
+
+  // 查询向量状态
+  getStatus: (themeId: number) => {
+    const params = new URLSearchParams();
+    params.append('themeId', themeId.toString());
+    return api.get(`/knowledge/status?${params}`);
+  },
 };

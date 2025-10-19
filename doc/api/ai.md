@@ -155,7 +155,6 @@ Content-Type: application/json
 **请求参数**:
 - `themeId`: 主题ID
 - `apiKey`: DeepSeek API密钥
-- `count`: 生成数量，默认1，最大5
 - `modelName`: 模型名称，默认为"deepseek-chat"
 - `baseUrl`: API基础URL，默认为"https://api.deepseek.com"
 
@@ -191,3 +190,61 @@ Content-Type: application/json
 }
 ```
 
+
+## 向量嵌入（知识库创建）
+
+### 向量重新嵌入
+```http
+POST /knowledge/rebuild
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "themeId": "uuid",
+  "apiKey": "sk-xxxxxxxxxxxxxxxx",
+  "modelName": "BAAI/bge-m3",
+  "baseUrl": "https://api.siliconflow.cn"
+}
+```
+
+**请求参数**:
+- `themeId`: 主题ID
+- `apiKey`: API密钥
+- `modelName`: 模型名称，默认为"BAAI/bge-m3"
+- `baseUrl`: API基础URL，默认为"https://api.siliconflow.cn"
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "message": "重新嵌入向量成功"
+}
+```
+
+**错误响应**:
+```json
+{
+  "success": false,
+  "message": "重新嵌入向量失败",
+  "error": "GENERATION_FAILED",
+  "details": "模型响应超时"
+}
+```
+
+
+### 向量状态查询
+GET /knowledge/status?themeId=
+Authorization: Bearer <token>
+Content-Type: application/json
+
+**请求参数**:
+- `themeId`: 主题ID
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "knowledged": true,
+  "last_knowledge_time": "2025-09-23 13:12"
+}
+```

@@ -203,7 +203,6 @@ export const JokeCard: React.FC<JokeCardProps> = ({
         <p>{joke.content}</p>
         <div className="joke-meta">
           <Tag color="blue">评分: {joke.finalScore}</Tag>
-          <Tag color="green">{joke.qualityLevel}</Tag>
         </div>
       </Card.Body>
     </Card>

@@ -5,6 +5,8 @@ import com.duduk.jokemanager.entity.Theme;
 import com.duduk.jokemanager.entity.Joke;
 import com.duduk.jokemanager.entity.User;
 import com.duduk.jokemanager.repository.CommentRepository;
+import org.springframework.ai.core.tool.Tool;
+import org.springframework.ai.core.tool.ToolParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,11 +28,13 @@ public class CommentService {
         return commentRepository.save(comment);
     }
 
-    public Optional<Comment> findById(Long id) {
+    @Tool(description = "根据ID查找评论")
+    public Optional<Comment> findById(@ToolParam(description = "评论ID") Long id) {
         return commentRepository.findById(id);
     }
 
-    public void deleteById(Long id) {
+    @Tool(description = "根据ID删除评论")
+    public void deleteById(@ToolParam(description = "要删除的评论ID") Long id) {
         commentRepository.deleteById(id);
     }
 
@@ -90,29 +94,48 @@ public class CommentService {
     }
 
     // 创建主题评论
-    public Comment createThemeComment(String content, Theme theme, User user) {
+    @Tool(description = "创建主题评论，需要提供内容、主题和用户")
+    public Comment createThemeComment(
+            @ToolParam(description = "评论内容") String content, 
+            @ToolParam(description = "评论所属的主题") Theme theme, 
+            @ToolParam(description = "评论的用户") User user) {
         Comment comment = new Comment(content, theme, user);
         return save(comment);
     }
 
-    public Comment createThemeComment(String content, Theme theme, String authorName) {
+    @Tool(description = "创建主题评论，使用匿名用户名")
+    public Comment createThemeComment(
+            @ToolParam(description = "评论内容") String content, 
+            @ToolParam(description = "评论所属的主题") Theme theme, 
+            @ToolParam(description = "匿名用户名") String authorName) {
         Comment comment = new Comment(content, theme, authorName);
         return save(comment);
     }
 
     // 创建笑话评论
-    public Comment createJokeComment(String content, Joke joke, User user) {
+    @Tool(description = "创建笑话评论，需要提供内容、笑话和用户")
+    public Comment createJokeComment(
+            @ToolParam(description = "评论内容") String content, 
+            @ToolParam(description = "评论所属的笑话") Joke joke, 
+            @ToolParam(description = "评论的用户") User user) {
         Comment comment = new Comment(content, joke, user);
         return save(comment);
     }
 
-    public Comment createJokeComment(String content, Joke joke, String authorName) {
+    @Tool(description = "创建笑话评论，使用匿名用户名")
+    public Comment createJokeComment(
+            @ToolParam(description = "评论内容") String content, 
+            @ToolParam(description = "评论所属的笑话") Joke joke, 
+            @ToolParam(description = "匿名用户名") String authorName) {
         Comment comment = new Comment(content, joke, authorName);
         return save(comment);
     }
 
     // 更新评论内容
-    public Comment updateComment(Long id, String newContent) {
+    @Tool(description = "更新评论内容")
+    public Comment updateComment(
+            @ToolParam(description = "评论ID") Long id, 
+            @ToolParam(description = "新的评论内容") String newContent) {
         Optional<Comment> commentOpt = findById(id);
         if (commentOpt.isPresent()) {
             Comment comment = commentOpt.get();

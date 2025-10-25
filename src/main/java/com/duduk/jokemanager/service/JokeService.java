@@ -5,6 +5,8 @@ import com.duduk.jokemanager.entity.Theme;
 import com.duduk.jokemanager.entity.User;
 import com.duduk.jokemanager.repository.JokeRepository;
 import com.duduk.jokemanager.repository.ThemeRepository;
+import org.springframework.ai.core.tool.Tool;
+import org.springframework.ai.core.tool.ToolParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -78,14 +80,19 @@ public class JokeService {
     /**
      * 获取笑话详情
      */
-    public Optional<Joke> getJokeById(Long id) {
+    @Tool(description = "根据ID获取笑话详情，包括标题、内容、主题、评分等信息")
+    public Optional<Joke> getJokeById(@ToolParam(description = "笑话的ID") Long id) {
         return jokeRepository.findById(id);
     }
     
     /**
      * 获取随机笑话
      */
-    public List<Joke> getRandomJokes(Long themeId, BigDecimal minScore, int count) {
+    @Tool(description = "获取随机笑话，可以指定主题ID、最低评分和数量")
+    public List<Joke> getRandomJokes(
+            @ToolParam(description = "主题ID，可选参数，不指定则从所有主题中获取") Long themeId, 
+            @ToolParam(description = "最低评分，可选参数，默认为0.0") BigDecimal minScore, 
+            @ToolParam(description = "获取的笑话数量，默认为10") int count) {
         if (themeId != null) {
             return jokeRepository.findRandomJokesByTheme(themeId, count);
         } else {
@@ -96,7 +103,12 @@ public class JokeService {
     /**
      * 创建笑话（登录用户）
      */
-    public Joke createJoke(String title, String content, Long themeId, User createdBy) {
+    @Tool(description = "创建新笑话，需要提供标题、内容、主题ID和创建者用户信息")
+    public Joke createJoke(
+            @ToolParam(description = "笑话的标题") String title, 
+            @ToolParam(description = "笑话的内容") String content, 
+            @ToolParam(description = "主题ID") Long themeId, 
+            @ToolParam(description = "创建笑话的用户") User createdBy) {
         Optional<Theme> themeOpt = themeRepository.findById(themeId);
         if (themeOpt.isEmpty()) {
             throw new RuntimeException("主题不存在");
@@ -126,7 +138,12 @@ public class JokeService {
     /**
      * 更新笑话
      */
-    public Joke updateJoke(Long id, String title, String content, User updatedBy) {
+    @Tool(description = "更新已有笑话的标题和内容")
+    public Joke updateJoke(
+            @ToolParam(description = "要更新的笑话ID") Long id, 
+            @ToolParam(description = "新的笑话标题，可选参数") String title, 
+            @ToolParam(description = "新的笑话内容，可选参数") String content, 
+            @ToolParam(description = "执行更新的用户") User updatedBy) {
         Optional<Joke> jokeOpt = jokeRepository.findById(id);
         if (jokeOpt.isEmpty()) {
             throw new RuntimeException("笑话不存在");
@@ -148,7 +165,8 @@ public class JokeService {
     /**
      * 删除笑话
      */
-    public void deleteJoke(Long id) {
+    @Tool(description = "根据ID删除指定的笑话")
+    public void deleteJoke(@ToolParam(description = "要删除的笑话ID") Long id) {
         jokeRepository.deleteById(id);
     }
     
@@ -170,14 +188,21 @@ public class JokeService {
     /**
      * 更改笑话状态
      */
-    public Joke changeStatus(Long id, Joke.Status status) {
+    @Tool(description = "更改笑话的状态，如审核通过、拒绝、隐藏等")
+    public Joke changeStatus(
+            @ToolParam(description = "要更改状态的笑话ID") Long id, 
+            @ToolParam(description = "新的笑话状态，可选值：PENDING, APPROVED, REJECTED, HIDDEN") Joke.Status status) {
         return changeStatus(id, status, null);
     }
     
     /**
      * 更改笑话状态（支持拒绝理由）
      */
-    public Joke changeStatus(Long id, Joke.Status status, String reason) {
+    @Tool(description = "更改笑话的状态，支持添加拒绝理由")
+    public Joke changeStatus(
+            @ToolParam(description = "要更改状态的笑话ID") Long id, 
+            @ToolParam(description = "新的笑话状态，可选值：PENDING, APPROVED, REJECTED, HIDDEN") Joke.Status status, 
+            @ToolParam(description = "拒绝理由，仅在状态为REJECTED时使用") String reason) {
         Optional<Joke> jokeOpt = jokeRepository.findById(id);
         if (jokeOpt.isEmpty()) {
             throw new RuntimeException("笑话不存在");

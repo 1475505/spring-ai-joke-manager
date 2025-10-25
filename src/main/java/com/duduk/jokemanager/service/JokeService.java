@@ -15,7 +15,9 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -31,7 +33,7 @@ public class JokeService {
      * 获取笑话列表
      */
     @Tool(description = "获取笑话列表，支持按主题、状态、评分、关键词等条件筛选")
-    public Page<Joke> getJokes(
+    public Map<String, Object> getJokes(
             @ToolParam(description = "主题ID，可选参数") Long themeId, 
             @ToolParam(description = "笑话状态，可选值：PENDING, APPROVED, REJECTED, HIDDEN") Joke.Status status, 
             @ToolParam(description = "最低评分，可选参数") BigDecimal minScore, 
@@ -40,47 +42,57 @@ public class JokeService {
             @ToolParam(description = "是否AI生成，可选参数") Boolean isAiGenerated, 
             @ToolParam(description = "分页信息") Pageable pageable) {
         
+        Page<Joke> pageResult;
+        
         if (keyword != null && !keyword.trim().isEmpty()) {
             if (themeId != null) {
                 Optional<Theme> themeOpt = themeRepository.findById(themeId);
                 if (themeOpt.isPresent()) {
-                    return jokeRepository.findByThemeAndKeyword(themeOpt.get(), keyword.trim(), pageable);
+                    pageResult = jokeRepository.findByThemeAndKeyword(themeOpt.get(), keyword.trim(), pageable);
+                } else {
+                    pageResult = jokeRepository.findByKeyword(keyword.trim(), pageable);
                 }
             } else {
-                return jokeRepository.findByKeyword(keyword.trim(), pageable);
+                pageResult = jokeRepository.findByKeyword(keyword.trim(), pageable);
             }
-        }
-        
-        if (themeId != null) {
+        } else if (themeId != null) {
             Optional<Theme> themeOpt = themeRepository.findById(themeId);
             if (themeOpt.isPresent()) {
                 Theme theme = themeOpt.get();
                 if (status != null) {
-                    return jokeRepository.findByThemeAndStatus(theme, status, pageable);
+                    pageResult = jokeRepository.findByThemeAndStatus(theme, status, pageable);
+                } else if (minScore != null) {
+                    pageResult = jokeRepository.findByThemeAndFinalScoreGreaterThanEqual(theme, minScore, pageable);
+                } else if (isAiGenerated != null) {
+                    pageResult = jokeRepository.findByThemeAndIsAiGenerate(theme, isAiGenerated, pageable);
+                } else {
+                    pageResult = jokeRepository.findByTheme(theme, pageable);
                 }
-                if (minScore != null) {
-                    return jokeRepository.findByThemeAndFinalScoreGreaterThanEqual(theme, minScore, pageable);
-                }
-                if (isAiGenerated != null) {
-                    return jokeRepository.findByThemeAndIsAiGenerate(theme, isAiGenerated, pageable);
-                }
-                return jokeRepository.findByTheme(theme, pageable);
+            } else {
+                pageResult = Page.empty(pageable);
             }
+        } else if (status != null) {
+            pageResult = jokeRepository.findByStatus(status, pageable);
+        } else if (minScore != null) {
+            pageResult = jokeRepository.findByFinalScoreGreaterThanEqual(minScore, pageable);
+        } else if (isAiGenerated != null) {
+            pageResult = jokeRepository.findByIsAiGenerate(isAiGenerated, pageable);
+        } else {
+            pageResult = jokeRepository.findAll(pageable);
         }
         
-        if (status != null) {
-            return jokeRepository.findByStatus(status, pageable);
-        }
+        // 转换为Map格式，避免Spring AI @Tool注解的函数式类型警告
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", pageResult.getContent());
+        result.put("page", pageResult.getNumber());
+        result.put("size", pageResult.getSize());
+        result.put("totalElements", pageResult.getTotalElements());
+        result.put("totalPages", pageResult.getTotalPages());
+        result.put("first", pageResult.isFirst());
+        result.put("last", pageResult.isLast());
+        result.put("empty", pageResult.isEmpty());
         
-        if (minScore != null) {
-            return jokeRepository.findByFinalScoreGreaterThanEqual(minScore, pageable);
-        }
-        
-        if (isAiGenerated != null) {
-            return jokeRepository.findByIsAiGenerate(isAiGenerated, pageable);
-        }
-        
-        return jokeRepository.findAll(pageable);
+        return result;
     }
     
     /**
@@ -202,17 +214,17 @@ public class JokeService {
      * 更改笑话状态
      */
     @Tool(description = "更改笑话的状态，如审核通过、拒绝、隐藏等")
-    public Joke changeStatus(
+    public Joke changeJokeStatus(
             @ToolParam(description = "要更改状态的笑话ID") Long id, 
             @ToolParam(description = "新的笑话状态，可选值：PENDING, APPROVED, REJECTED, HIDDEN") Joke.Status status) {
-        return changeStatus(id, status, null);
+        return changeJokeStatusWithReason(id, status, null);
     }
     
     /**
      * 更改笑话状态（支持拒绝理由）
      */
     @Tool(description = "更改笑话的状态，支持添加拒绝理由")
-    public Joke changeStatus(
+    public Joke changeJokeStatusWithReason(
             @ToolParam(description = "要更改状态的笑话ID") Long id, 
             @ToolParam(description = "新的笑话状态，可选值：PENDING, APPROVED, REJECTED, HIDDEN") Joke.Status status, 
             @ToolParam(description = "拒绝理由，仅在状态为REJECTED时使用") String reason) {
@@ -237,6 +249,13 @@ public class JokeService {
         joke.setStatus(status);
         
         return jokeRepository.save(joke);
+    }
+    
+    /**
+     * 内部方法：更改笑话状态（支持拒绝理由）
+     */
+    public Joke changeStatus(Long id, Joke.Status status, String reason) {
+        return changeJokeStatusWithReason(id, status, reason);
     }
     
     /**
@@ -270,33 +289,51 @@ public class JokeService {
      * 获取用户的投稿
      */
     @Tool(description = "获取指定用户的投稿笑话列表")
-    public Page<Joke> getUserJokes(
+    public Map<String, Object> getUserJokes(
             @ToolParam(description = "用户对象") User user, 
             @ToolParam(description = "笑话状态，可选值：PENDING, APPROVED, REJECTED, HIDDEN") Joke.Status status, 
             @ToolParam(description = "主题ID，可选参数") Long themeId, 
             @ToolParam(description = "分页信息") Pageable pageable) {
+        
+        Page<Joke> pageResult;
+        
         if (themeId != null) {
             Optional<Theme> themeOpt = themeRepository.findById(themeId);
             if (themeOpt.isPresent()) {
                 Theme theme = themeOpt.get();
                 if (status != null) {
-                    return jokeRepository.findByCreatedByAndStatusAndTheme(user, status, theme, pageable);
+                    pageResult = jokeRepository.findByCreatedByAndStatusAndTheme(user, status, theme, pageable);
+                } else {
+                    pageResult = jokeRepository.findByCreatedByAndTheme(user, theme, pageable);
                 }
-                return jokeRepository.findByCreatedByAndTheme(user, theme, pageable);
+            } else {
+                pageResult = Page.empty(pageable);
             }
+        } else if (status != null) {
+            pageResult = jokeRepository.findByCreatedByAndStatus(user, status, pageable);
+        } else {
+            pageResult = jokeRepository.findByCreatedBy(user, pageable);
         }
         
-        if (status != null) {
-            return jokeRepository.findByCreatedByAndStatus(user, status, pageable);
-        }
-        return jokeRepository.findByCreatedBy(user, pageable);
+        // 转换为Map格式，避免Spring AI @Tool注解的函数式类型警告
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", pageResult.getContent());
+        result.put("page", pageResult.getNumber());
+        result.put("size", pageResult.getSize());
+        result.put("totalElements", pageResult.getTotalElements());
+        result.put("totalPages", pageResult.getTotalPages());
+        result.put("first", pageResult.isFirst());
+        result.put("last", pageResult.isLast());
+        result.put("empty", pageResult.isEmpty());
+        
+        return result;
     }
     
     /**
      * 获取待审核笑话
      */
     @Tool(description = "获取指定主题下待审核的笑话列表")
-    public Page<Joke> getPendingJokes(
+    public Map<String, Object> getPendingJokes(
             @ToolParam(description = "主题ID") Long themeId, 
             @ToolParam(description = "分页信息") Pageable pageable) {
         Optional<Theme> themeOpt = themeRepository.findById(themeId);
@@ -304,7 +341,20 @@ public class JokeService {
             throw new RuntimeException("主题不存在");
         }
         
-        return jokeRepository.findPendingJokesByTheme(themeOpt.get(), pageable);
+        Page<Joke> pageResult = jokeRepository.findPendingJokesByTheme(themeOpt.get(), pageable);
+        
+        // 转换为Map格式，避免Spring AI @Tool注解的函数式类型警告
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", pageResult.getContent());
+        result.put("page", pageResult.getNumber());
+        result.put("size", pageResult.getSize());
+        result.put("totalElements", pageResult.getTotalElements());
+        result.put("totalPages", pageResult.getTotalPages());
+        result.put("first", pageResult.isFirst());
+        result.put("last", pageResult.isLast());
+        result.put("empty", pageResult.isEmpty());
+        
+        return result;
     }
     
     /**

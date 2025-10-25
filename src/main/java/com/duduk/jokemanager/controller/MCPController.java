@@ -89,7 +89,7 @@ public class MCPController {
             // 构建聊天请求，添加工具支持
             var chatResponse = chatClient.prompt()
                     .user(userInput)
-                    .tools(aiService, jokeService, userService) // 启用工具调用，传入多个带有@Tool注解的服务
+                    .tools(jokeService, userService) // 启用工具调用，传入多个带有@Tool注解的服务
                     .call()
                     .chatResponse();
             

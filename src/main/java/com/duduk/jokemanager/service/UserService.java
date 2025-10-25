@@ -38,14 +38,10 @@ public class UserService {
         return userRepository.save(user);
     }
     
-    @Tool(description = "检查用户名是否已存在")
     public boolean existsByUsername(@ToolParam(description = "用户名") String username) {
         return userRepository.existsByUserName(username);
     }
     
-
-    
-    @Tool(description = "创建新用户，需要提供用户名、密码和角色")
     public User createUser(
             @ToolParam(description = "用户名") String username, 
             @ToolParam(description = "密码") String password, 
@@ -67,7 +63,6 @@ public class UserService {
         return save(user);
     }
     
-    @Tool(description = "根据ID删除用户")
     public void deleteUser(@ToolParam(description = "要删除的用户ID") Long userId) {
         userRepository.deleteById(userId);
     }

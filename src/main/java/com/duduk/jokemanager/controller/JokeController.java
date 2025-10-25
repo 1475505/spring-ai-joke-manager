@@ -2,6 +2,7 @@ package com.duduk.jokemanager.controller;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -103,10 +104,13 @@ public class JokeController {
                 statusEnum = hasAdminPermission ? null : Joke.Status.APPROVED;
             }
             
-            Page<Joke> jokes = jokeService.getJokes(themeId, statusEnum, minScore, maxScore, 
-                                                   keyword, isAiGenerate, pageable);
+            Map<String, Object> jokesResult = jokeService.getJokes(themeId, Joke.Status.APPROVED, minScore, 
+                                                   null, keyword, null, pageable);
             
-            Page<JokeDto.JokeInfo> jokeInfoPage = jokes.map(this::convertToJokeInfo);
+            @SuppressWarnings("unchecked")
+            List<Joke> jokes = (List<Joke>) jokesResult.get("content");
+            Page<Joke> jokePage = new org.springframework.data.domain.PageImpl<>(jokes, pageable, (Long) jokesResult.get("totalElements"));
+            Page<JokeDto.JokeInfo> jokeInfoPage = jokePage.map(this::convertToJokeInfo);
             PageResponse<JokeDto.JokeInfo> response = PageResponse.of(jokeInfoPage);
             
             return ResponseEntity.ok(ApiResponse.success(response));
@@ -173,10 +177,13 @@ public class JokeController {
             if (size > 100) size = 100;
             
             Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-            Page<Joke> jokes = jokeService.getJokes(themeId, Joke.Status.APPROVED, minScore, 
+            Map<String, Object> jokesResult = jokeService.getJokes(themeId, Joke.Status.APPROVED, minScore, 
                                                    null, keyword, null, pageable);
             
-            Page<JokeDto.JokeInfo> jokeInfoPage = jokes.map(this::convertToJokeInfo);
+            @SuppressWarnings("unchecked")
+            List<Joke> jokes = (List<Joke>) jokesResult.get("content");
+            Page<Joke> jokePage = new org.springframework.data.domain.PageImpl<>(jokes, pageable, (Long) jokesResult.get("totalElements"));
+            Page<JokeDto.JokeInfo> jokeInfoPage = jokePage.map(this::convertToJokeInfo);
             PageResponse<JokeDto.JokeInfo> response = PageResponse.of(jokeInfoPage);
             
             return ResponseEntity.ok(ApiResponse.success(response));
@@ -353,8 +360,12 @@ public class JokeController {
                                  getSortField(sort));
             Pageable pageable = PageRequest.of(page, size, sortObj);
             
-            Page<Joke> jokes = jokeService.getUserJokes(user, statusEnum, themeId, pageable);
-            Page<JokeDto.JokeInfo> jokeInfoPage = jokes.map(this::convertToJokeInfo);
+            Map<String, Object> jokesResult = jokeService.getUserJokes(user, statusEnum, themeId, pageable);
+            
+            @SuppressWarnings("unchecked")
+            List<Joke> jokes = (List<Joke>) jokesResult.get("content");
+            Page<Joke> jokePage = new org.springframework.data.domain.PageImpl<>(jokes, pageable, (Long) jokesResult.get("totalElements"));
+            Page<JokeDto.JokeInfo> jokeInfoPage = jokePage.map(this::convertToJokeInfo);
             PageResponse<JokeDto.JokeInfo> response = PageResponse.of(jokeInfoPage);
             
             return ResponseEntity.ok(ApiResponse.success(response));
@@ -542,8 +553,12 @@ public class JokeController {
             Sort sortObj = Sort.by("desc".equals(order) ? Sort.Direction.DESC : Sort.Direction.ASC, sort);
             Pageable pageable = PageRequest.of(page, size, sortObj);
             
-            Page<Joke> jokes = jokeService.getPendingJokes(themeId, pageable);
-            Page<JokeDto.JokeInfo> jokeInfoPage = jokes.map(this::convertToJokeInfo);
+            Map<String, Object> jokesResult = jokeService.getPendingJokes(themeId, pageable);
+            
+            @SuppressWarnings("unchecked")
+            List<Joke> jokes = (List<Joke>) jokesResult.get("content");
+            Page<Joke> jokePage = new org.springframework.data.domain.PageImpl<>(jokes, pageable, (Long) jokesResult.get("totalElements"));
+            Page<JokeDto.JokeInfo> jokeInfoPage = jokePage.map(this::convertToJokeInfo);
             PageResponse<JokeDto.JokeInfo> response = PageResponse.of(jokeInfoPage);
             
             return ResponseEntity.ok(ApiResponse.success(response));
@@ -594,7 +609,7 @@ public class JokeController {
                         .body(ApiResponse.error(403, "权限不足，需要主题写入权限"));
             }
             
-            joke = jokeService.changeStatus(jokeId, Joke.Status.APPROVED);
+            joke = jokeService.changeJokeStatus(jokeId, Joke.Status.APPROVED);
             
             if (scoreRequest != null && scoreRequest.getManualScore() != null) {
                 joke = jokeService.setManualScore(jokeId, scoreRequest.getManualScore());
@@ -708,7 +723,7 @@ public class JokeController {
                         .body(ApiResponse.error(400, "无效的状态值"));
             }
             
-            Joke updatedJoke = jokeService.changeStatus(jokeId, status, request.getReason());
+            Joke updatedJoke = jokeService.changeJokeStatusWithReason(jokeId, status, request.getReason());
             JokeDto.JokeInfo jokeInfo = convertToJokeInfo(updatedJoke);
             
             return ResponseEntity.ok(ApiResponse.success(jokeInfo, "状态修改成功"));

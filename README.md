@@ -87,6 +87,7 @@ cd frontend && npm install && npm run dev
 - API能力 - 通过apikey操作笑话
 - 数据库约束：保持数据整体性，比如删除笑话一并删除相关的评论等。
 - MCP能力：增加传参llm key
+- tool call不支持调用链返回
 
 ## 许可证
 

@@ -123,6 +123,15 @@ const MCPChat: React.FC = () => {
           };
           setMessages(prev => [...prev, errorMessage]);
         }
+      } else {
+        // 没有工具被调用时，显示提示信息
+        const noToolsMessage: Message = {
+          id: (Date.now() + 2).toString(),
+          role: 'assistant',
+          content: '<div style="margin-top: 8px; padding: 12px; background-color: #f6ffed; border-radius: 6px; border-left: 4px solid #52c41a;"><span style="color: #52c41a; margin-right: 8px;">💡</span>本次对话未调用任何工具</div>',
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, noToolsMessage]);
       }
     } catch (error: any) {
       console.error('MCP chat error:', error);

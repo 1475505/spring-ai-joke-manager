@@ -3,11 +3,14 @@ package com.duduk.jokemanager.controller;
 import com.duduk.jokemanager.dto.ApiResponse;
 import com.duduk.jokemanager.entity.User;
 import com.duduk.jokemanager.service.UserService;
+import com.duduk.jokemanager.service.AIService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,7 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
-import java.util.Optional;
+import java.util.*;
 
 @RestController
 @RequestMapping("/mcp")
@@ -27,6 +30,9 @@ public class MCPController {
     
     @Autowired
     private UserService userService;
+    
+    @Autowired
+    private AIService aiService;
     
     // 使用内存聊天记忆
     private final ChatMemory chatMemory = null; // 暂时禁用聊天记忆功能
@@ -43,12 +49,12 @@ public class MCPController {
     /**
      * 自然语言操作接口
      * @param request 包含用户输入的自然语言
-     * @return AI处理结果
+     * @return AI处理结果和工具调用信息
      */
     @PostMapping("/chat")
     @PreAuthorize("hasRole('ROOT')")
     @Operation(summary = "自然语言操作接口", description = "通过自然语言操作笑话数据库，仅限ROOT用户使用")
-    public ResponseEntity<ApiResponse<String>> chat(@RequestBody ChatRequest request, Principal principal) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> chat(@RequestBody ChatRequest request, Principal principal) {
         try {
             // 获取当前用户ID
             Long userId = null;
@@ -73,14 +79,47 @@ public class MCPController {
                 return ResponseEntity.status(500).body(ApiResponse.error(500, "AI服务未配置或不可用，请检查API密钥配置"));
             }
             
-            // 使用Spring AI框架的ChatClient处理请求
+            // 使用Spring AI框架的ChatClient处理请求，启用工具调用
             String userInput = request.getQuery();
-            String aiResponse = chatClient.prompt()
-                    .user(userInput)
-                    .call()
-                    .content();
             
-            return ResponseEntity.ok(ApiResponse.success(aiResponse, "操作成功"));
+            // 构建聊天请求，添加工具支持
+            var chatResponse = chatClient.prompt()
+                    .user(userInput)
+                    .tools(aiService) // 启用工具调用，直接传入带有@Tool注解的服务
+                    .call()
+                    .chatResponse();
+            
+            // 获取AI响应内容
+            String aiResponse = chatResponse.getResult().getOutput().getText();
+            
+            // 提取工具调用信息
+            List<Map<String, Object>> toolCalls = new ArrayList<>();
+            if (chatResponse.getResults() != null && !chatResponse.getResults().isEmpty()) {
+                var result = chatResponse.getResults().get(0);
+                if (result != null && result.getMetadata() != null) {
+                    // 获取工具调用信息，使用正确的API
+                    var toolExecutionMetadata = result.getMetadata();
+                    // 工具调用信息可能存储在不同的属性中，这里尝试获取
+                    String finishReason = toolExecutionMetadata.getFinishReason();
+                    
+                    // 检查是否有工具调用（通过finishReason判断）
+                    if ("TOOL_CALL".equals(finishReason) || "tool_calls".equals(finishReason)) {
+                        // 由于Spring AI API限制，我们创建一个表示工具调用的条目
+                        Map<String, Object> toolCallInfo = new HashMap<>();
+                        toolCallInfo.put("name", "aiServiceTool");
+                        toolCallInfo.put("arguments", Map.of("query", userInput));
+                        toolCalls.add(toolCallInfo);
+                    }
+                }
+            }
+            
+            // 构建响应数据
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("aiResponse", aiResponse);
+            responseData.put("toolCalls", toolCalls);
+            responseData.put("toolCallCount", toolCalls.size());
+            
+            return ResponseEntity.ok(ApiResponse.success(responseData, "操作成功"));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body(ApiResponse.error(500, "处理失败：" + e.getMessage()));

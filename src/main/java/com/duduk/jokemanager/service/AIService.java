@@ -62,7 +62,6 @@ public class AIService {
     /**
      * AI智能评分
      */
-    @Tool(description = "使用AI对笑话进行评分，需要提供笑话ID、API密钥等信息")
     public Map<String, Object> aiScore(@ToolParam(description = "包含jokeId、apiKey、modelName和baseUrl的请求参数") Map<String, Object> request) {
         try {
             // 处理jokeId的类型转换，支持Integer和String
@@ -140,7 +139,6 @@ public class AIService {
     /**
      * 批量AI评分
      */
-    @Tool(description = "批量使用AI对多个笑话进行评分，需要提供笑话ID列表、API密钥等信息")
     public Map<String, Object> aiBatchScore(@ToolParam(description = "包含jokeIds列表、apiKey、modelName和baseUrl的请求参数") Map<String, Object> request) {
         try {
             @SuppressWarnings("unchecked")
@@ -191,7 +189,6 @@ public class AIService {
     /**
      * AI智能生成笑话 - 基于RAG的LLM生成
      */
-    @Tool(description = "使用AI基于RAG技术生成笑话，需要提供主题ID、用户提示、API密钥等信息")
     public Map<String, Object> aiGenerate(@ToolParam(description = "包含themeId、prompt、apiKey、modelName和baseUrl的请求参数") Map<String, Object> request) {
         try {
             // 处理themeId的类型转换，支持Integer和String
@@ -273,8 +270,7 @@ public class AIService {
         }
     }
 
-    @Tool(description = "重建主题的知识库向量，需要提供主题ID")
-    public Map<String, Object> knowledgeRebuild(@ToolParam(description = "包含themeId的请求参数") Map<String, Object> request) {
+    public Map<String, Object> knowledgeRebuild(Map<String, Object> request) {
         try {
             Object themeIdObj = request.get("themeId");
             Long themeId;
@@ -325,8 +321,7 @@ public class AIService {
         }
     }
 
-    @Tool(description = "查询主题的知识库状态，需要提供主题ID")
-    public Map<String, Object> knowledgeStatus(@ToolParam(description = "主题ID") Long themeId) {
+    public Map<String, Object> knowledgeStatus(Long themeId) {
         try {
             Optional<Theme> themeOpt = themeRepository.findById(themeId);
             if (themeOpt.isEmpty()) {

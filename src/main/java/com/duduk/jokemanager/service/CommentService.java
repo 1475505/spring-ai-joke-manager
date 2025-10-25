@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,72 +25,85 @@ public class CommentService {
     private CommentRepository commentRepository;
 
     // 基础CRUD操作
-    public Comment save(Comment comment) {
+    public Comment save(@ToolParam(description = "评论对象") Comment comment) {
         return commentRepository.save(comment);
     }
 
-    @Tool(description = "根据ID查找评论")
     public Optional<Comment> findById(@ToolParam(description = "评论ID") Long id) {
         return commentRepository.findById(id);
     }
 
-    @Tool(description = "根据ID删除评论")
     public void deleteById(@ToolParam(description = "要删除的评论ID") Long id) {
         commentRepository.deleteById(id);
     }
 
-    public Page<Comment> findAll(Pageable pageable) {
+    public Page<Comment> findAll(@ToolParam(description = "分页信息") Pageable pageable) {
         return commentRepository.findAll(pageable);
     }
 
     // 主题评论相关方法
-    public Page<Comment> findByTheme(Theme theme, Pageable pageable) {
+    public Page<Comment> findByTheme(
+            @ToolParam(description = "主题对象") Theme theme, 
+            @ToolParam(description = "分页信息") Pageable pageable) {
         return commentRepository.findByTheme(theme, pageable);
     }
 
-    public List<Comment> findByThemeOrderByCreatedAtDesc(Theme theme) {
+    public List<Comment> findByThemeOrderByCreatedAtDesc(@ToolParam(description = "主题对象") Theme theme) {
         return commentRepository.findByThemeOrderByCreatedAtDesc(theme);
     }
 
-    public Page<Comment> findByThemeAndKeyword(Theme theme, String keyword, Pageable pageable) {
+    public Page<Comment> findByThemeAndKeyword(
+            @ToolParam(description = "主题对象") Theme theme, 
+            @ToolParam(description = "搜索关键词") String keyword, 
+            @ToolParam(description = "分页信息") Pageable pageable) {
         return commentRepository.findByThemeAndKeyword(theme, keyword, pageable);
     }
 
-    public Long countByTheme(Theme theme) {
+    public Long countByTheme(@ToolParam(description = "主题对象") Theme theme) {
         return commentRepository.countByTheme(theme);
     }
 
     // 笑话评论相关方法
-    public Page<Comment> findByJoke(Joke joke, Pageable pageable) {
+    public Page<Comment> findByJoke(
+            @ToolParam(description = "笑话对象") Joke joke, 
+            @ToolParam(description = "分页信息") Pageable pageable) {
         return commentRepository.findByJoke(joke, pageable);
     }
 
-    public List<Comment> findByJokeOrderByCreatedAtDesc(Joke joke) {
+    public List<Comment> findByJokeOrderByCreatedAtDesc(@ToolParam(description = "笑话对象") Joke joke) {
         return commentRepository.findByJokeOrderByCreatedAtDesc(joke);
     }
 
-    public Page<Comment> findByJokeAndKeyword(Joke joke, String keyword, Pageable pageable) {
+    public Page<Comment> findByJokeAndKeyword(
+            @ToolParam(description = "笑话对象") Joke joke, 
+            @ToolParam(description = "搜索关键词") String keyword, 
+            @ToolParam(description = "分页信息") Pageable pageable) {
         return commentRepository.findByJokeAndKeyword(joke, keyword, pageable);
     }
 
-    public Long countByJoke(Joke joke) {
+    public Long countByJoke(@ToolParam(description = "笑话对象") Joke joke) {
         return commentRepository.countByJoke(joke);
     }
 
     // 用户评论相关方法
-    public Page<Comment> findByUser(User user, Pageable pageable) {
+    public Page<Comment> findByUser(
+            @ToolParam(description = "用户对象") User user, 
+            @ToolParam(description = "分页信息") Pageable pageable) {
         return commentRepository.findByUser(user, pageable);
     }
 
-    public List<Comment> findByUserOrderByCreatedAtDesc(User user) {
+    public List<Comment> findByUserOrderByCreatedAtDesc(@ToolParam(description = "用户对象") User user) {
         return commentRepository.findByUserOrderByCreatedAtDesc(user);
     }
 
-    public Page<Comment> findByAuthor(User user, String keyword, Pageable pageable) {
+    public Page<Comment> findByAuthor(
+            @ToolParam(description = "用户对象") User user, 
+            @ToolParam(description = "搜索关键词") String keyword, 
+            @ToolParam(description = "分页信息") Pageable pageable) {
         return commentRepository.findByAuthor(user, keyword, pageable);
     }
 
-    public Long countByUser(User user) {
+    public Long countByUser(@ToolParam(description = "用户对象") User user) {
         return commentRepository.countByUser(user);
     }
 
@@ -103,7 +117,6 @@ public class CommentService {
         return save(comment);
     }
 
-    @Tool(description = "创建主题评论，使用匿名用户名")
     public Comment createThemeComment(
             @ToolParam(description = "评论内容") String content, 
             @ToolParam(description = "评论所属的主题") Theme theme, 
@@ -122,7 +135,6 @@ public class CommentService {
         return save(comment);
     }
 
-    @Tool(description = "创建笑话评论，使用匿名用户名")
     public Comment createJokeComment(
             @ToolParam(description = "评论内容") String content, 
             @ToolParam(description = "评论所属的笑话") Joke joke, 
@@ -132,16 +144,12 @@ public class CommentService {
     }
 
     // 更新评论内容
-    @Tool(description = "更新评论内容")
     public Comment updateComment(
             @ToolParam(description = "评论ID") Long id, 
-            @ToolParam(description = "新的评论内容") String newContent) {
-        Optional<Comment> commentOpt = findById(id);
-        if (commentOpt.isPresent()) {
-            Comment comment = commentOpt.get();
-            comment.setContent(newContent);
-            return save(comment);
-        }
-        throw new RuntimeException("Comment not found with id: " + id);
+            @ToolParam(description = "新的评论内容") String content) {
+        Comment comment = commentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("评论不存在"));
+        comment.setContent(content);
+        return commentRepository.save(comment);
     }
 }

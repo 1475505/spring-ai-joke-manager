@@ -21,24 +21,25 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
     
-    public Optional<User> findByUsername(String username) {
+    @Tool(description = "根据用户名查找用户信息")
+    public Optional<User> findByUsername(@ToolParam(description = "用户名") String username) {
         return userRepository.findByUserName(username);
     }
     
-    @Tool(description = "根据ID查找用户信息")
     public Optional<User> findById(@ToolParam(description = "用户ID") Long id) {
         return userRepository.findById(id);
     }
     
-    public Page<User> findAll(Pageable pageable) {
+    public Page<User> findAll(@ToolParam(description = "分页信息") Pageable pageable) {
         return userRepository.findAll(pageable);
     }
     
-    public User save(User user) {
+    public User save(@ToolParam(description = "用户对象") User user) {
         return userRepository.save(user);
     }
     
-    public boolean existsByUsername(String username) {
+    @Tool(description = "检查用户名是否已存在")
+    public boolean existsByUsername(@ToolParam(description = "用户名") String username) {
         return userRepository.existsByUserName(username);
     }
     
@@ -95,7 +96,10 @@ public class UserService {
         return save(user);
     }
     
-    public void resetPassword(Long userId, String newPassword) {
+    @Tool(description = "重置用户密码")
+    public void resetPassword(
+            @ToolParam(description = "用户ID") Long userId, 
+            @ToolParam(description = "新密码") String newPassword) {
         Optional<User> userOpt = findById(userId);
         if (userOpt.isEmpty()) {
             throw new RuntimeException("用户不存在");

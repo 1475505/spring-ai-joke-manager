@@ -82,6 +82,12 @@ cd frontend && npm install && npm run dev
 - [开发指南](doc/development.md) - 本地开发环境搭建
 - [MCP集成](doc/mcp-integration.md) - 自然语言数据库操作实现
 
+## TODO
+
+- API能力 - 通过apikey操作笑话
+- 数据库约束：保持数据整体性，比如删除笑话一并删除相关的评论等。
+- MCP能力：增加传参llm key
+
 ## 许可证
 
 本项目采用MIT许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。

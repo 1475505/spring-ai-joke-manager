@@ -4,6 +4,7 @@ import com.duduk.jokemanager.dto.ApiResponse;
 import com.duduk.jokemanager.entity.User;
 import com.duduk.jokemanager.service.UserService;
 import com.duduk.jokemanager.service.AIService;
+import com.duduk.jokemanager.service.JokeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.ai.chat.client.ChatClient;
@@ -33,6 +34,9 @@ public class MCPController {
     
     @Autowired
     private AIService aiService;
+    
+    @Autowired
+    private JokeService jokeService;
     
     // 使用内存聊天记忆
     private final ChatMemory chatMemory = null; // 暂时禁用聊天记忆功能
@@ -85,7 +89,7 @@ public class MCPController {
             // 构建聊天请求，添加工具支持
             var chatResponse = chatClient.prompt()
                     .user(userInput)
-                    .tools(aiService) // 启用工具调用，直接传入带有@Tool注解的服务
+                    .tools(aiService, jokeService, userService) // 启用工具调用，传入多个带有@Tool注解的服务
                     .call()
                     .chatResponse();
             

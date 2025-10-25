@@ -30,9 +30,15 @@ public class JokeService {
     /**
      * 获取笑话列表
      */
-    public Page<Joke> getJokes(Long themeId, Joke.Status status, BigDecimal minScore, 
-                              BigDecimal maxScore, String keyword, Boolean isAiGenerated, 
-                              Pageable pageable) {
+    @Tool(description = "获取笑话列表，支持按主题、状态、评分、关键词等条件筛选")
+    public Page<Joke> getJokes(
+            @ToolParam(description = "主题ID，可选参数") Long themeId, 
+            @ToolParam(description = "笑话状态，可选值：PENDING, APPROVED, REJECTED, HIDDEN") Joke.Status status, 
+            @ToolParam(description = "最低评分，可选参数") BigDecimal minScore, 
+            @ToolParam(description = "最高评分，可选参数") BigDecimal maxScore, 
+            @ToolParam(description = "关键词搜索，可选参数") String keyword, 
+            @ToolParam(description = "是否AI生成，可选参数") Boolean isAiGenerated, 
+            @ToolParam(description = "分页信息") Pageable pageable) {
         
         if (keyword != null && !keyword.trim().isEmpty()) {
             if (themeId != null) {
@@ -123,7 +129,11 @@ public class JokeService {
     /**
      * 创建笑话（匿名用户）
      */
-    public Joke createAnonymousJoke(String title, String content, Long themeId) {
+    @Tool(description = "创建匿名笑话，不需要用户登录")
+    public Joke createAnonymousJoke(
+            @ToolParam(description = "笑话标题") String title, 
+            @ToolParam(description = "笑话内容") String content, 
+            @ToolParam(description = "主题ID") Long themeId) {
         Optional<Theme> themeOpt = themeRepository.findById(themeId);
         if (themeOpt.isEmpty()) {
             throw new RuntimeException("主题不存在");
@@ -173,7 +183,10 @@ public class JokeService {
     /**
      * 设置人工评分
      */
-    public Joke setManualScore(Long id, BigDecimal score) {
+    @Tool(description = "为笑话设置人工评分")
+    public Joke setManualScore(
+            @ToolParam(description = "笑话ID") Long id, 
+            @ToolParam(description = "人工评分值") BigDecimal score) {
         Optional<Joke> jokeOpt = jokeRepository.findById(id);
         if (jokeOpt.isEmpty()) {
             throw new RuntimeException("笑话不存在");
@@ -229,7 +242,7 @@ public class JokeService {
     /**
      * 增加浏览次数
      */
-    public void incrementViewCount(Long id) {
+    public void incrementViewCount(@ToolParam(description = "笑话ID") Long id) {
         Optional<Joke> jokeOpt = jokeRepository.findById(id);
         if (jokeOpt.isPresent()) {
             Joke joke = jokeOpt.get();
@@ -241,7 +254,7 @@ public class JokeService {
     /**
      * 点赞笑话
      */
-    public Joke likeJoke(Long id) {
+    public Joke likeJoke(@ToolParam(description = "笑话ID") Long id) {
         Optional<Joke> jokeOpt = jokeRepository.findById(id);
         if (jokeOpt.isEmpty()) {
             throw new RuntimeException("笑话不存在");
@@ -256,7 +269,12 @@ public class JokeService {
     /**
      * 获取用户的投稿
      */
-    public Page<Joke> getUserJokes(User user, Joke.Status status, Long themeId, Pageable pageable) {
+    @Tool(description = "获取指定用户的投稿笑话列表")
+    public Page<Joke> getUserJokes(
+            @ToolParam(description = "用户对象") User user, 
+            @ToolParam(description = "笑话状态，可选值：PENDING, APPROVED, REJECTED, HIDDEN") Joke.Status status, 
+            @ToolParam(description = "主题ID，可选参数") Long themeId, 
+            @ToolParam(description = "分页信息") Pageable pageable) {
         if (themeId != null) {
             Optional<Theme> themeOpt = themeRepository.findById(themeId);
             if (themeOpt.isPresent()) {
@@ -277,7 +295,10 @@ public class JokeService {
     /**
      * 获取待审核笑话
      */
-    public Page<Joke> getPendingJokes(Long themeId, Pageable pageable) {
+    @Tool(description = "获取指定主题下待审核的笑话列表")
+    public Page<Joke> getPendingJokes(
+            @ToolParam(description = "主题ID") Long themeId, 
+            @ToolParam(description = "分页信息") Pageable pageable) {
         Optional<Theme> themeOpt = themeRepository.findById(themeId);
         if (themeOpt.isEmpty()) {
             throw new RuntimeException("主题不存在");
@@ -289,7 +310,9 @@ public class JokeService {
     /**
      * 相似度检测
      */
-    public List<Joke> checkSimilarity(String content, Long themeId) {
+    public List<Joke> checkSimilarity(
+            @ToolParam(description = "要检测的笑话内容") String content, 
+            @ToolParam(description = "主题ID") Long themeId) {
         Optional<Theme> themeOpt = themeRepository.findById(themeId);
         if (themeOpt.isEmpty()) {
             throw new RuntimeException("主题不存在");
@@ -303,7 +326,9 @@ public class JokeService {
     /**
      * 简单的相似度计算（基于编辑距离）
      */
-    public double calculateSimilarity(String text1, String text2) {
+    public double calculateSimilarity(
+            @ToolParam(description = "第一段文本") String text1, 
+            @ToolParam(description = "第二段文本") String text2) {
         if (text1 == null || text2 == null) return 0.0;
         
         text1 = text1.toLowerCase().trim();

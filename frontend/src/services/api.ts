@@ -360,3 +360,11 @@ export const knowledgeAPI = {
     return api.get(`/knowledge/status?${params}`);
   },
 };
+
+// MCP API
+export const mcpAPI = {
+  // 自然语言操作接口
+  chat: (message: string) => {
+    return api.post('/mcp/chat', { message });
+  },
+};

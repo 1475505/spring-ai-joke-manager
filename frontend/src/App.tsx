@@ -12,6 +12,7 @@ import ProfileEditModal from './components/ProfileEditModal';
 import OpenAIConfigModal from './components/OpenAIConfigModal';
 import ThemeManagementModal from './components/ThemeManagementModal';
 import AIGenerateModal from './components/AIGenerateModal';
+import MCPChat from './components/MCPChat';
 
 import { ThemeComments } from './components/theme/ThemeComments';
 import './App.css';
@@ -565,6 +566,8 @@ function App() {
         }}
         themeId={currentThemeId ?? undefined}
       />
+
+      <MCPChat />
 
     </Layout>
   );

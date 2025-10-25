@@ -4,4 +4,6 @@ TODO
 
 ## 概述
 
-MCP（Model Context Protocol）/自然语言操作模块允许ROOT用户通过自然语言直接操作数据库，提供智能化的数据查询、统计、更新等功能。系统会将自然语言转换为安全的SQL操作，并提供完整的操作审计和权限控制。
+MCP（Model Context Protocol）/自然语言操作模块允许ROOT用户通过自然语言直接操作数据库。通过spring ai提供的@Tool注解和LLM的toolCall能力，将已有的service的能力用@Tool注解，给出tools列表，让模型自动调用llm来处理，实现智能化的自然语言操作笑话的增删和查询。
+
+root用户点击前端的气泡即可对话，会展示结果和工具tools调用。

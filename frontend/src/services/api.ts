@@ -365,6 +365,6 @@ export const knowledgeAPI = {
 export const mcpAPI = {
   // 自然语言操作接口
   chat: (message: string) => {
-    return api.post('/mcp/chat', { message });
+    return api.post('/mcp/chat', { query: message });
   },
 };

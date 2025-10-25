@@ -61,9 +61,14 @@ const MCPChat: React.FC = () => {
       // 调用后端MCP接口
       const response = await mcpAPI.chat(inputValue);
       
-      // 由于响应拦截器已经将response.data替换为response.data.data
-      // 所以直接从response.data中获取aiResponse
-      const aiResponse = response.data.aiResponse;
+      // 正确处理后端返回的数据格式
+      // 后端返回的是包含aiResponse和toolCalls的对象
+      const responseData = response.data;
+      const aiResponse = responseData.aiResponse || responseData; // 兼容可能的直接文本返回
+      const toolCalls: ToolCall[] = responseData.toolCalls || [];
+      
+      // 更新工具调用状态
+      setToolCalls(toolCalls);
       
       // 添加AI回复到聊天记录
       const aiMessage: Message = {
@@ -74,6 +79,51 @@ const MCPChat: React.FC = () => {
       };
       
       setMessages(prev => [...prev, aiMessage]);
+      
+      // 显示工具调用返回链
+      if (toolCalls && toolCalls.length > 0) {
+        try {
+          // 构建工具调用链的格式化内容，避免使用JSX组件标签
+          let toolChainContent = '<div style="margin-top: 8px; padding: 12px; background-color: #f0f5ff; border-radius: 6px;">';
+          toolChainContent += '<div style="display: flex; align-items: center; margin-bottom: 8px;"><span style="color: #1890ff; margin-right: 8px;">⚙️</span> <strong>工具调用链：</strong></div>';
+          
+          // 遍历每个工具调用
+          toolCalls.forEach((toolCall: ToolCall, index: number) => {
+            // 安全检查每个属性
+            const safeName = toolCall.name || '未知工具';
+            const safeArgs = toolCall.arguments || {};
+            const argsString = JSON.stringify(safeArgs, null, 2) || '{}';
+            
+            toolChainContent += `<div style="margin-bottom: 12px; padding-left: 24px; position: relative;">`;
+            toolChainContent += `<div style="position: absolute; left: 0; top: 6px; width: 16px; height: 1px; background-color: #d9d9d9;"></div>`;
+            toolChainContent += `<div style="margin-bottom: 4px;"><strong>工具名：</strong>${safeName}</div>`;
+            toolChainContent += `<div><strong>参数：</strong></div><div style="background-color: #fafafa; padding: 8px; border-radius: 4px; overflow-x: auto; font-family: monospace; white-space: pre-wrap;">`;
+            toolChainContent += argsString;
+            toolChainContent += `</div>`;
+            toolChainContent += `</div>`;
+          });
+          
+          toolChainContent += '</div>';
+          
+          const toolCallMessage: Message = {
+            id: (Date.now() + 2).toString(),
+            role: 'assistant',
+            content: toolChainContent,
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, toolCallMessage]);
+        } catch (error) {
+          console.error('工具调用链渲染错误:', error);
+          // 添加简单的错误消息而不是复杂的HTML结构
+          const errorMessage: Message = {
+            id: (Date.now() + 2).toString(),
+            role: 'assistant',
+            content: '工具调用链渲染失败',
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, errorMessage]);
+        }
+      }
     } catch (error: any) {
       console.error('MCP chat error:', error);
       message.error(error.message || '发送消息失败');

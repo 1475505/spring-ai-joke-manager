@@ -40,8 +40,8 @@ public class AIConfig {
      */
     @Bean
     public OpenAiChatModel openAiChatModel() {
-        if (defaultApiKey.isEmpty()) {
-            // 如果没有配置默认API Key，返回一个空的实现
+        if (defaultApiKey.isEmpty() || defaultApiKey.equals("your-api-key-here")) {
+            // 如果没有配置有效的API Key，返回一个空的实现
             return null;
         }
         

@@ -6,9 +6,7 @@ import com.duduk.jokemanager.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -31,12 +29,11 @@ public class MCPController {
     private UserService userService;
     
     // 使用内存聊天记忆
-    private final ChatMemory chatMemory = new InMemoryChatMemory();
+    private final ChatMemory chatMemory = null; // 暂时禁用聊天记忆功能
     
     public MCPController(ChatModel chatModel) {
         if (chatModel != null) {
             this.chatClient = ChatClient.builder(chatModel)
-                    .defaultAdvisors(new MessageChatMemoryAdvisor(chatMemory))
                     .build();
         } else {
             this.chatClient = null;

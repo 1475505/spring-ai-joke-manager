@@ -2,8 +2,8 @@ package com.duduk.jokemanager.service;
 
 import com.duduk.jokemanager.entity.User;
 import com.duduk.jokemanager.repository.UserRepository;
-import org.springframework.ai.core.tool.Tool;
-import org.springframework.ai.core.tool.ToolParam;
+import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

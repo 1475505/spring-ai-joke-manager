@@ -45,14 +45,20 @@ public class AIConfig {
             return null;
         }
         
-        OpenAiApi openAiApi = new OpenAiApi(defaultBaseUrl, defaultApiKey);
+        OpenAiApi openAiApi = OpenAiApi.builder()
+                .baseUrl(defaultBaseUrl)
+                .apiKey(defaultApiKey)
+                .build();
         
         // 创建ChatOptions并设置model参数
         OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
             .model(defaultModel)
             .build();
         
-        return new OpenAiChatModel(openAiApi, chatOptions);
+        return OpenAiChatModel.builder()
+                .openAiApi(openAiApi)
+                .defaultOptions(chatOptions)
+                .build();
     }
 
     /**
@@ -71,14 +77,20 @@ public class AIConfig {
             model = "deepseek-chat";
         }
         
-        OpenAiApi openAiApi = new OpenAiApi(baseUrl, apiKey);
+        OpenAiApi openAiApi = OpenAiApi.builder()
+                .baseUrl(baseUrl)
+                .apiKey(apiKey)
+                .build();
         
         // 创建ChatOptions并设置model参数
         OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
             .model(model)
             .build();
         
-        return new OpenAiChatModel(openAiApi, chatOptions);
+        return OpenAiChatModel.builder()
+                .openAiApi(openAiApi)
+                .defaultOptions(chatOptions)
+                .build();
     }
 
     /**
@@ -91,7 +103,10 @@ public class AIConfig {
         if (embedApiKey == null || embedApiKey.trim().isEmpty()) {
             throw new IllegalStateException("EMBED_API_KEY 未配置，请设置环境变量 EMBED_API_KEY");
         }
-        OpenAiApi openAiApi = new OpenAiApi(embedBaseUrl, embedApiKey);
+        OpenAiApi openAiApi = OpenAiApi.builder()
+                .baseUrl(embedBaseUrl)
+                .apiKey(embedApiKey)
+                .build();
         // 显式设置嵌入模型名称，确保维度与pgvector匹配（Spring AI M6 使用 .model()）
         OpenAiEmbeddingOptions options = OpenAiEmbeddingOptions.builder()
                 .model(embedModel)

@@ -9,8 +9,8 @@ import com.duduk.jokemanager.repository.ThemeRepository;
 import com.duduk.jokemanager.repository.UserRepository;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.core.tool.Tool;
-import org.springframework.ai.core.tool.ToolParam;
+import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.ai.document.Document;
 // 移除 Metadata.from 的使用，避免不兼容 API
 // import org.springframework.ai.document.Metadata;

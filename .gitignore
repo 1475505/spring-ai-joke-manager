@@ -1,0 +1,52 @@
+# Compiled class files
+*.class
+
+# Log files
+*.log
+
+# Maven target directory
+target/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.claude/
+
+# Node.js (frontend)
+node_modules/
+npm-debug.log*
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Vite build output (frontend)
+frontend/dist/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# H2 Database files
+*.h2.db
+*.trace.db
+*.lock.db
+
+# OS generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+# Application logs
+spring.log
+application.log
